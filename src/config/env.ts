@@ -1,7 +1,19 @@
 import { z } from 'zod';
 import dotenv from 'dotenv';
+import { existsSync } from 'fs';
+import { join } from 'path';
 
-dotenv.config();
+// Load .env.local first if it exists, then .env
+const envLocalPath = join(process.cwd(), '.env.local');
+const envPath = join(process.cwd(), '.env');
+
+if (existsSync(envLocalPath)) {
+  dotenv.config({ path: envLocalPath });
+} else if (existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+} else {
+  dotenv.config();
+}
 
 const envSchema = z.object({
   // Server
