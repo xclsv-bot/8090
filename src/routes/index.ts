@@ -7,6 +7,8 @@ import { assignmentRoutes } from './assignments.js';
 import { availabilityRoutes } from './availability.js';
 import { chatRoutes } from './chat.js';
 import { cpaRoutes } from './cpa.js';
+import { signupRoutes } from './signups.js';
+import { payrollRoutes } from './payroll.js';
 
 /**
  * Register all routes
@@ -25,6 +27,8 @@ export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
   await fastify.register(availabilityRoutes, { prefix: '/api/v1/availability' });
   await fastify.register(chatRoutes, { prefix: '/api/v1/chat' });
   await fastify.register(cpaRoutes, { prefix: '/api/v1/cpa' });
+  await fastify.register(signupRoutes, { prefix: '/api/v1/signups' });
+  await fastify.register(payrollRoutes, { prefix: '/api/v1/payroll' });
 
   // Root endpoint
   fastify.get('/', async () => {
