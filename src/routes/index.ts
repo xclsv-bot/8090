@@ -13,6 +13,9 @@ import { integrationRoutes } from './integrations.js';
 import { financialRoutes } from './financial.js';
 import { operatorRoutes } from './operators.js';
 import { reportRoutes } from './reports.js';
+import { analyticsRoutes } from './analytics.js';
+import { performanceRoutes } from './performance.js';
+import { adminRoutes } from './admin.js';
 
 /**
  * Register all routes
@@ -37,6 +40,9 @@ export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
   await fastify.register(financialRoutes, { prefix: '/api/v1/financial' });
   await fastify.register(operatorRoutes, { prefix: '/api/v1/operators' });
   await fastify.register(reportRoutes, { prefix: '/api/v1/reports' });
+  await fastify.register(analyticsRoutes, { prefix: '/api/v1/analytics' });
+  await fastify.register(performanceRoutes, { prefix: '/api/v1/performance' });
+  await fastify.register(adminRoutes, { prefix: '/api/v1/admin' });
 
   // Root endpoint
   fastify.get('/', async () => {
