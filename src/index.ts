@@ -2,6 +2,7 @@ import { buildApp } from './app.js';
 import { env } from './config/env.js';
 import { connectDatabase, closeDatabase } from './config/database.js';
 import { logger } from './utils/logger.js';
+import { startTokenRefreshService, stopTokenRefreshService } from './services/oauth/token-refresh.service.js';
 
 async function main() {
   try {
@@ -16,6 +17,9 @@ async function main() {
       host: env.HOST,
     });
 
+    // Start background services
+    startTokenRefreshService();
+
     logger.info(
       {
         port: env.PORT,
@@ -29,6 +33,7 @@ async function main() {
     const shutdown = async (signal: string) => {
       logger.info({ signal }, 'Shutting down...');
       
+      stopTokenRefreshService();
       await app.close();
       await closeDatabase();
       
