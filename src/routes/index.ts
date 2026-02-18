@@ -17,6 +17,7 @@ import { analyticsRoutes } from './analytics.js';
 import { performanceRoutes } from './performance.js';
 import { adminRoutes } from './admin.js';
 import oauthRoutes from './oauth.js';
+import webhookRoutes from './webhooks.js';
 
 /**
  * Register all routes
@@ -45,6 +46,7 @@ export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
   await fastify.register(performanceRoutes, { prefix: '/api/v1/performance' });
   await fastify.register(adminRoutes, { prefix: '/api/v1/admin' });
   await fastify.register(oauthRoutes, { prefix: '/api/v1/oauth' });
+  await fastify.register(webhookRoutes, { prefix: '/api/v1/webhooks' });
 
   // Root endpoint
   fastify.get('/', async () => {
