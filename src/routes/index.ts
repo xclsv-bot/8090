@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { healthRoutes } from './health.js';
+import { websocketRoutes } from './websocket.js';
 
 /**
  * Register all routes
@@ -7,6 +8,9 @@ import { healthRoutes } from './health.js';
 export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
   // Health check routes (no prefix)
   await fastify.register(healthRoutes);
+
+  // WebSocket routes
+  await fastify.register(websocketRoutes);
 
   // API v1 routes will be added here as features are built
   // await fastify.register(userRoutes, { prefix: '/api/v1/users' });
@@ -21,6 +25,7 @@ export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
         name: 'XCLSV Core Platform',
         version: process.env.npm_package_version || '1.0.0',
         documentation: '/documentation',
+        websocket: '/ws',
       },
     };
   });
