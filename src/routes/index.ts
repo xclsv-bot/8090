@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { healthRoutes } from './health.js';
 import { websocketRoutes } from './websocket.js';
 import { ambassadorRoutes } from './ambassadors.js';
+import { eventRoutes } from './events.js';
 
 /**
  * Register all routes
@@ -15,6 +16,7 @@ export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
 
   // API v1 routes
   await fastify.register(ambassadorRoutes, { prefix: '/api/v1/ambassadors' });
+  await fastify.register(eventRoutes, { prefix: '/api/v1/events' });
 
   // Root endpoint
   fastify.get('/', async () => {
