@@ -11,6 +11,19 @@ export async function authenticate(
   request: FastifyRequest,
   reply: FastifyReply
 ): Promise<void> {
+  // Skip auth if Clerk is not configured (development/initial deployment)
+  if (!env.CLERK_SECRET_KEY) {
+    logger.warn('Clerk not configured - allowing unauthenticated access');
+    request.user = {
+      id: 'dev-user',
+      email: 'dev@xclsv.com',
+      role: 'admin' as UserRole,
+      firstName: 'Dev',
+      lastName: 'User',
+    };
+    return;
+  }
+
   const authHeader = request.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {

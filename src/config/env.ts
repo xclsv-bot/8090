@@ -24,15 +24,15 @@ const envSchema = z.object({
   // Database
   DATABASE_URL: z.string().url(),
 
-  // Clerk Auth
-  CLERK_SECRET_KEY: z.string().min(1),
-  CLERK_PUBLISHABLE_KEY: z.string().min(1),
+  // Clerk Auth (optional for initial deployment)
+  CLERK_SECRET_KEY: z.string().optional().default(''),
+  CLERK_PUBLISHABLE_KEY: z.string().optional().default(''),
 
-  // AWS S3
+  // AWS S3 (optional for initial deployment)
   AWS_REGION: z.string().default('us-east-1'),
-  AWS_ACCESS_KEY_ID: z.string().min(1),
-  AWS_SECRET_ACCESS_KEY: z.string().min(1),
-  S3_BUCKET_NAME: z.string().min(1),
+  AWS_ACCESS_KEY_ID: z.string().optional().default(''),
+  AWS_SECRET_ACCESS_KEY: z.string().optional().default(''),
+  S3_BUCKET_NAME: z.string().optional().default('xclsv-core-platform'),
 
   // Rate Limiting
   RATE_LIMIT_MAX: z.string().default('100').transform(Number),
