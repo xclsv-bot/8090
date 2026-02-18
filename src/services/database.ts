@@ -1,4 +1,4 @@
-import { Pool, QueryResult, QueryResultRow } from 'pg';
+import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 import { pool } from '../config/database.js';
 import { logger } from '../utils/logger.js';
 
@@ -62,31 +62,14 @@ export class DatabaseService {
    * Execute a transaction with multiple queries
    */
   async transaction<T>(
-    callback: (client: DatabaseTransactionClient) => Promise<T>
+    callback: (client: PoolClient) => Promise<T>
   ): Promise<T> {
     const client = await this.pool.connect();
     
     try {
       await client.query('BEGIN');
-      
-      const transactionClient: DatabaseTransactionClient = {
-        query: async <R extends QueryResultRow>(text: string, params?: unknown[]) => {
-          const result = await client.query<R>(text, params);
-          return result;
-        },
-        queryOne: async <R extends QueryResultRow>(text: string, params?: unknown[]) => {
-          const result = await client.query<R>(text, params);
-          return result.rows[0] || null;
-        },
-        queryMany: async <R extends QueryResultRow>(text: string, params?: unknown[]) => {
-          const result = await client.query<R>(text, params);
-          return result.rows;
-        },
-      };
-
-      const result = await callback(transactionClient);
+      const result = await callback(client);
       await client.query('COMMIT');
-      
       return result;
     } catch (error) {
       await client.query('ROLLBACK');
@@ -108,12 +91,6 @@ export class DatabaseService {
       return false;
     }
   }
-}
-
-export interface DatabaseTransactionClient {
-  query: <T extends QueryResultRow>(text: string, params?: unknown[]) => Promise<QueryResult<T>>;
-  queryOne: <T extends QueryResultRow>(text: string, params?: unknown[]) => Promise<T | null>;
-  queryMany: <T extends QueryResultRow>(text: string, params?: unknown[]) => Promise<T[]>;
 }
 
 // Export singleton instance

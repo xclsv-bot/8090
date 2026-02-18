@@ -1,10 +1,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { createClerkClient } from '@clerk/backend';
+import { verifyToken } from '@clerk/backend';
 import { env } from '../config/env.js';
 import { logger } from '../utils/logger.js';
 import type { AuthUser, UserRole } from '../types/index.js';
-
-const clerk = createClerkClient({ secretKey: env.CLERK_SECRET_KEY });
 
 /**
  * Middleware to authenticate requests using Clerk
@@ -29,9 +27,11 @@ export async function authenticate(
 
   try {
     // Verify the session token with Clerk
-    const { sub: userId } = await clerk.verifyToken(token);
+    const payload = await verifyToken(token, {
+      secretKey: env.CLERK_SECRET_KEY,
+    });
 
-    if (!userId) {
+    if (!payload || !payload.sub) {
       return reply.status(401).send({
         success: false,
         error: {
@@ -41,20 +41,15 @@ export async function authenticate(
       });
     }
 
-    // Get full user details
-    const clerkUser = await clerk.users.getUser(userId);
-
-    // Extract role from public metadata (set in Clerk dashboard)
-    const role = (clerkUser.publicMetadata?.role as UserRole) || 'ambassador';
-
+    // Extract user info from token claims
     const user: AuthUser = {
-      id: clerkUser.id,
-      email: clerkUser.emailAddresses[0]?.emailAddress || '',
-      firstName: clerkUser.firstName || undefined,
-      lastName: clerkUser.lastName || undefined,
-      role,
-      organizationId: clerkUser.publicMetadata?.organizationId as string | undefined,
-      metadata: clerkUser.publicMetadata,
+      id: payload.sub,
+      email: (payload.email as string) || '',
+      firstName: payload.first_name as string | undefined,
+      lastName: payload.last_name as string | undefined,
+      role: (payload.role as UserRole) || 'ambassador',
+      organizationId: payload.org_id as string | undefined,
+      metadata: payload.metadata as Record<string, unknown> | undefined,
     };
 
     request.user = user;
@@ -117,19 +112,19 @@ export async function optionalAuth(
   const token = authHeader.substring(7);
 
   try {
-    const { sub: userId } = await clerk.verifyToken(token);
-    if (userId) {
-      const clerkUser = await clerk.users.getUser(userId);
-      const role = (clerkUser.publicMetadata?.role as UserRole) || 'ambassador';
+    const payload = await verifyToken(token, {
+      secretKey: env.CLERK_SECRET_KEY,
+    });
 
+    if (payload && payload.sub) {
       request.user = {
-        id: clerkUser.id,
-        email: clerkUser.emailAddresses[0]?.emailAddress || '',
-        firstName: clerkUser.firstName || undefined,
-        lastName: clerkUser.lastName || undefined,
-        role,
-        organizationId: clerkUser.publicMetadata?.organizationId as string | undefined,
-        metadata: clerkUser.publicMetadata,
+        id: payload.sub,
+        email: (payload.email as string) || '',
+        firstName: payload.first_name as string | undefined,
+        lastName: payload.last_name as string | undefined,
+        role: (payload.role as UserRole) || 'ambassador',
+        organizationId: payload.org_id as string | undefined,
+        metadata: payload.metadata as Record<string, unknown> | undefined,
       };
     }
   } catch {

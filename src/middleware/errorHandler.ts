@@ -60,14 +60,15 @@ export function errorHandler(
     return;
   }
 
-  // Handle known app errors
-  if ('statusCode' in error && error.statusCode) {
-    reply.status(error.statusCode).send({
+  // Handle known app errors with statusCode
+  const appError = error as AppError;
+  if (appError.statusCode) {
+    reply.status(appError.statusCode).send({
       success: false,
       error: {
-        code: error.code || 'ERROR',
-        message: error.message,
-        details: env.NODE_ENV === 'development' ? error.details : undefined,
+        code: appError.code || 'ERROR',
+        message: appError.message,
+        details: env.NODE_ENV === 'development' ? appError.details : undefined,
       },
     });
     return;
