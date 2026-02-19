@@ -72,3 +72,12 @@ export * from './dashboard.js';
 
 // Re-export leaderboard types (WO-73)
 export * from './leaderboard.js';
+
+// Re-export support hub types (WO-56)
+export * from './support-hub.js';
+
+// Re-export support hub real-time types (WO-58)
+export * from './support-hub-realtime.js';
+
+// Re-export event duplication types (WO-59)
+export * from './event-duplication.js';

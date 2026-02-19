@@ -26,6 +26,8 @@ const SCHEMA_ORDER = [
   'analytics_schema.sql', // Analytics & Reporting (WO-71)
   'leaderboard_schema.sql', // Leaderboard & Ambassador Analytics (WO-73)
   'alerting_schema.sql',  // KPI Alerting & Threshold Versioning (WO-74)
+  'support_hub_schema.sql', // Support Hub (WO-56: Knowledge Base, Training, Tickets)
+  'support_hub_realtime_schema.sql', // Support Hub Real-time (WO-58: WebSocket, DM, Presence)
 ];
 
 async function migrate() {
