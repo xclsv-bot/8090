@@ -30,7 +30,7 @@ const dateRangeSchema = z.object({
 
 const leaderboardFiltersSchema = dateRangeSchema.extend({
   metric: z.enum(['signups', 'performance_score', 'goal_achievement', 'signups_per_hour']).optional(),
-  skillLevel: z.enum(['trainee', 'standard', 'pro', 'elite']).optional(),
+  skillLevel: z.enum(['trainee', 'standard', 'senior', 'lead']).optional(),
   region: z.string().optional(),
   limit: z.coerce.number().min(1).max(100).optional(),
   offset: z.coerce.number().min(0).optional(),
@@ -48,7 +48,7 @@ const cohortFiltersSchema = dateRangeSchema.extend({
 
 const trendFiltersSchema = z.object({
   ambassadorId: z.string().uuid().optional(),
-  skillLevel: z.enum(['trainee', 'standard', 'pro', 'elite']).optional(),
+  skillLevel: z.enum(['trainee', 'standard', 'senior', 'lead']).optional(),
   region: z.string().optional(),
   periods: z.coerce.number().min(2).max(12).optional(),
   periodType: z.enum(['week', 'month']).optional(),

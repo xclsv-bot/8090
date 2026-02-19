@@ -75,11 +75,16 @@ class LeaderboardService {
       };
     });
 
+    // Count significant improvements (rank improved by 5+ positions)
+    const significantImprovements = enrichedEntries.filter(
+      entry => entry.isSignificantChange && entry.rankChange !== undefined && entry.rankChange > 0
+    ).length;
+
     const total = await this.getLeaderboardTotalCount(fromDate, toDate, skillLevel, region);
 
     return {
       entries: enrichedEntries,
-      summary,
+      summary: { ...summary, significantImprovements },
       filters: {
         fromDate,
         toDate,
@@ -972,8 +977,13 @@ class LeaderboardService {
       ORDER BY total_signups DESC
     `, [fromDate, toDate]);
 
+    // Filter out 'Unknown' cohorts when grouping by skill_level (NULL skill levels)
+    const validResults = groupBy === 'skill_level' 
+      ? results.filter(row => row.cohort_name !== 'Unknown')
+      : results;
+
     const cohorts: CohortMetrics[] = await Promise.all(
-      results.map(async row => {
+      validResults.map(async row => {
         // Get top performers for each cohort
         const topPerformers = await db.queryMany<{
           ambassador_id: string;
