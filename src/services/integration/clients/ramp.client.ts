@@ -366,3 +366,9 @@ export async function getSpendByDepartment(params: {
 
 // Export client for direct use
 export { client as rampClient };
+
+// Re-export types for convenience
+export type { 
+  RampTransaction, 
+  InternalTransaction,
+} from '../data-mapper.service.js';

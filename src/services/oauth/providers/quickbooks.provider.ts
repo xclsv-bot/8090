@@ -21,10 +21,10 @@ const QB_TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'
 
 export function getQuickBooksConfig(): QuickBooksConfig {
   return {
-    clientId: env.QUICKBOOKS_CLIENT_ID || '',
-    clientSecret: env.QUICKBOOKS_CLIENT_SECRET || '',
-    redirectUri: `${env.APP_URL || 'http://localhost:3001'}/api/v1/oauth/quickbooks/callback`,
-    environment: (env.QUICKBOOKS_ENVIRONMENT as 'sandbox' | 'production') || 'sandbox',
+    clientId: process.env.QUICKBOOKS_CLIENT_ID || '',
+    clientSecret: process.env.QUICKBOOKS_CLIENT_SECRET || '',
+    redirectUri: `${process.env.APP_URL || 'http://localhost:3001'}/api/v1/oauth/quickbooks/callback`,
+    environment: (process.env.QUICKBOOKS_ENVIRONMENT as 'sandbox' | 'production') || 'sandbox',
   };
 }
 
@@ -77,7 +77,12 @@ export async function exchangeCodeForTokens(
     throw new Error(`QuickBooks token exchange failed: ${JSON.stringify(error)}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as {
+    access_token: string;
+    refresh_token: string;
+    token_type: string;
+    expires_in: number;
+  };
   
   return {
     accessToken: data.access_token,
@@ -117,7 +122,12 @@ export async function refreshTokens(refreshToken: string): Promise<QuickBooksTok
     throw new Error(`QuickBooks token refresh failed: ${JSON.stringify(error)}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as {
+    access_token: string;
+    refresh_token: string;
+    token_type: string;
+    expires_in: number;
+  };
   
   return {
     accessToken: data.access_token,

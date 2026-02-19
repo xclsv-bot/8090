@@ -21,6 +21,7 @@ import { performanceRoutes } from './performance.js';
 import { dashboardRoutes } from './dashboard.js';
 import { leaderboardRoutes } from './leaderboard.js';
 import { adminRoutes } from './admin.js';
+import { importRoutes } from './admin/imports/index.js';
 import { alertingRoutes } from './alerting.js';
 import { exportRoutes } from './exports.js';
 import { supportHubRoutes } from './support-hub/index.js';
@@ -58,6 +59,7 @@ export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
   await fastify.register(dashboardRoutes, { prefix: '/api/v1/dashboard' });
   await fastify.register(leaderboardRoutes, { prefix: '/api/v1/leaderboard' });
   await fastify.register(adminRoutes, { prefix: '/api/v1/admin' });
+  await fastify.register(importRoutes, { prefix: '/api/admin/imports' });
   await fastify.register(alertingRoutes, { prefix: '/api/v1/alerting' });
   await fastify.register(exportRoutes, { prefix: '/api/v1/exports' });
   await fastify.register(supportHubRoutes, { prefix: '/api/v1/support-hub' });

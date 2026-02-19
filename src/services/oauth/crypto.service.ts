@@ -8,7 +8,7 @@ const SALT_LENGTH = 32;
 
 // Derive encryption key from environment secret
 function getEncryptionKey(): Buffer {
-  const secret = env.ENCRYPTION_SECRET || env.DATABASE_URL; // Fallback to DB URL as entropy
+  const secret = process.env.ENCRYPTION_SECRET || process.env.DATABASE_URL || 'default-secret'; // Fallback to DB URL as entropy
   return crypto.scryptSync(secret, 'xclsv-oauth-salt', 32);
 }
 

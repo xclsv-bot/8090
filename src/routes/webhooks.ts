@@ -115,7 +115,7 @@ const webhookRoutes: FastifyPluginAsync = async (fastify) => {
         return payload.event_type as string || payload.type as string || null;
 
       default:
-        return payload.event || payload.type || payload.event_type as string || null;
+        return (payload.event as string) || (payload.type as string) || (payload.event_type as string) || null;
     }
   }
 

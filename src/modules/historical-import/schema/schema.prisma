@@ -1,0 +1,411 @@
+// Historical Data Import Schema for XCLSV Core Platform
+// Database: PostgreSQL (Neon)
+// Created for Work Order WO-77
+//
+// NOTE: This schema uses namespaced tables (hist_import_*) to integrate with existing database
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// IMPORT JOB MANAGEMENT
+// Tracks the lifecycle of import operations
+// =============================================================================
+
+model HistImportJob {
+  id              String   @id @default(cuid())
+  jobNumber       Int      @unique @default(autoincrement()) @map("job_number")
+  fileName        String   @map("file_name")
+  originalFileName String  @map("original_file_name")
+  fileSize        BigInt   @map("file_size")
+  mimeType        String   @map("mime_type")
+  fileHash        String   @map("file_hash")
+  storagePath     String?  @map("storage_path")
+  
+  status          HistImportJobStatus @default(PENDING)
+  phase           HistImportPhase @default(UPLOAD)
+  
+  dataTypes       HistImportDataType[] @map("data_types")
+  validationMode  HistImportValidationMode @default(STRICT) @map("validation_mode")
+  
+  // Statistics
+  totalRows       Int?     @map("total_rows")
+  parsedRows      Int?     @map("parsed_rows")
+  validRows       Int?     @map("valid_rows")
+  invalidRows     Int?     @map("invalid_rows")
+  importedRows    Int?     @map("imported_rows")
+  skippedRows     Int?     @map("skipped_rows")
+  
+  // Timestamps for each phase
+  uploadedAt      DateTime @default(now()) @map("uploaded_at")
+  parsedAt        DateTime? @map("parsed_at")
+  validatedAt     DateTime? @map("validated_at")
+  reconciledAt    DateTime? @map("reconciled_at")
+  confirmedAt     DateTime? @map("confirmed_at")
+  executedAt      DateTime? @map("executed_at")
+  completedAt     DateTime? @map("completed_at")
+  failedAt        DateTime? @map("failed_at")
+  
+  // Error handling
+  errorMessage    String?  @map("error_message")
+  errorDetails    Json?    @map("error_details")
+  
+  // User tracking
+  createdBy       String   @map("created_by")
+  confirmedBy     String?  @map("confirmed_by")
+  
+  notes           String?
+  metadata        Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  parsedRecords         HistImportParsedRecord[]
+  reconciliationMatches HistImportReconciliationMatch[]
+  auditTrailEntries     HistImportAuditTrail[]
+  importResults         HistImportResult[]
+
+  @@index([status])
+  @@index([phase])
+  @@index([createdBy])
+  @@index([createdAt])
+  @@index([fileHash])
+  @@map("hist_import_jobs")
+}
+
+// =============================================================================
+// PARSED RECORDS (Staging Table)
+// Temporary storage for validated data before final import
+// =============================================================================
+
+model HistImportParsedRecord {
+  id              String   @id @default(cuid())
+  importJobId     String   @map("import_job_id")
+  rowNumber       Int      @map("row_number")
+  recordType      HistImportDataType @map("record_type")
+  
+  // Raw and processed data
+  rawData         Json     @map("raw_data")
+  normalizedData  Json?    @map("normalized_data")
+  
+  // Validation status
+  validationStatus HistImportValidationStatus @default(PENDING) @map("validation_status")
+  validationErrors Json?    @map("validation_errors")
+  validationWarnings Json?  @map("validation_warnings")
+  
+  // Reconciliation status
+  reconciliationStatus HistImportReconciliationStatus @default(PENDING) @map("reconciliation_status")
+  
+  // Import status
+  importStatus    HistImportRecordStatus @default(PENDING) @map("import_status")
+  importedEntityId String? @map("imported_entity_id")
+  importedEntityType String? @map("imported_entity_type")
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  importJob             HistImportJob @relation(fields: [importJobId], references: [id], onDelete: Cascade)
+  reconciliationMatches HistImportReconciliationMatch[]
+
+  @@index([importJobId])
+  @@index([rowNumber])
+  @@index([recordType])
+  @@index([validationStatus])
+  @@index([reconciliationStatus])
+  @@index([importStatus])
+  @@index([importJobId, validationStatus])
+  @@map("hist_import_parsed_records")
+}
+
+// =============================================================================
+// RECONCILIATION DECISIONS
+// Tracks matching between import data and existing master records
+// =============================================================================
+
+model HistImportReconciliationMatch {
+  id                String   @id @default(cuid())
+  importJobId       String   @map("import_job_id")
+  parsedRecordId    String?  @map("parsed_record_id")
+  
+  entityType        HistImportEntityType @map("entity_type")
+  importedValue     String   @map("imported_value")
+  importedFields    Json?    @map("imported_fields")
+  
+  // Match result
+  matchType         HistImportMatchType @map("match_type")
+  matchConfidence   Float?   @map("match_confidence")
+  matchMethod       String?  @map("match_method")
+  
+  // Linked entity (TEXT refs to existing UUID tables)
+  matchedAmbassadorId String? @map("matched_ambassador_id")
+  matchedEventId      String? @map("matched_event_id")
+  matchedOperatorId   String? @map("matched_operator_id")
+  matchedVenueId      String? @map("matched_venue_id")
+  
+  // Candidate matches (for ambiguous cases)
+  candidateMatches  Json?    @map("candidate_matches")
+  
+  // User decision
+  userDecision      HistImportReconDecision? @map("user_decision")
+  decisionNotes     String?  @map("decision_notes")
+  decidedBy         String?  @map("decided_by")
+  decidedAt         DateTime? @map("decided_at")
+  
+  // Final resolution
+  finalEntityId     String?  @map("final_entity_id")
+  wasCreated        Boolean  @default(false) @map("was_created")
+  
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  importJob         HistImportJob @relation(fields: [importJobId], references: [id], onDelete: Cascade)
+  parsedRecord      HistImportParsedRecord? @relation(fields: [parsedRecordId], references: [id], onDelete: SetNull)
+
+  @@index([importJobId])
+  @@index([parsedRecordId])
+  @@index([entityType])
+  @@index([matchType])
+  @@index([userDecision])
+  @@index([matchedAmbassadorId])
+  @@index([matchedEventId])
+  @@index([matchedOperatorId])
+  @@map("hist_import_reconciliation_matches")
+}
+
+// =============================================================================
+// IMPORT RESULTS
+// Final imported records linked to import job
+// =============================================================================
+
+model HistImportResult {
+  id              String   @id @default(cuid())
+  importJobId     String   @map("import_job_id")
+  entityType      HistImportEntityType @map("entity_type")
+  entityId        String   @map("entity_id")
+  operation       HistImportOperation
+
+  // Source tracking
+  parsedRecordIds String[] @map("parsed_record_ids")
+  rowNumbers      Int[]    @map("row_numbers")
+  
+  // Snapshot of imported data
+  importedData    Json     @map("imported_data")
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relations
+  importJob       HistImportJob @relation(fields: [importJobId], references: [id], onDelete: Cascade)
+
+  @@index([importJobId])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([operation])
+  @@map("hist_import_results")
+}
+
+// =============================================================================
+// AUDIT TRAIL
+// Complete history for compliance and troubleshooting
+// =============================================================================
+
+model HistImportAuditTrail {
+  id              String   @id @default(cuid())
+  importJobId     String?  @map("import_job_id")
+  
+  // What happened
+  action          HistImportAuditAction
+  entityType      String?  @map("entity_type")
+  entityId        String?  @map("entity_id")
+  
+  // Details
+  summary         String
+  details         Json?
+  previousState   Json?    @map("previous_state")
+  newState        Json?    @map("new_state")
+  
+  // Context
+  userId          String   @map("user_id")
+  userEmail       String?  @map("user_email")
+  ipAddress       String?  @map("ip_address")
+  userAgent       String?  @map("user_agent")
+  
+  // Severity for filtering
+  severity        HistImportAuditSeverity @default(INFO)
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relations
+  importJob       HistImportJob? @relation(fields: [importJobId], references: [id], onDelete: SetNull)
+
+  @@index([importJobId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([severity])
+  @@map("hist_import_audit_trail")
+}
+
+// =============================================================================
+// ENUMS (namespaced to avoid conflicts with existing schema)
+// =============================================================================
+
+enum HistImportJobStatus {
+  PENDING
+  PARSING
+  PARSED
+  VALIDATING
+  VALIDATED
+  RECONCILING
+  RECONCILED
+  AWAITING_CONFIRMATION
+  EXECUTING
+  COMPLETED
+  FAILED
+  CANCELLED
+
+  @@map("hist_import_job_status")
+}
+
+enum HistImportPhase {
+  UPLOAD
+  PARSE
+  VALIDATE
+  RECONCILE
+  CONFIRM
+  EXECUTE
+  COMPLETE
+
+  @@map("hist_import_phase")
+}
+
+enum HistImportDataType {
+  SIGN_UPS
+  BUDGETS_ACTUALS
+  PAYROLL
+  AMBASSADORS
+  EVENTS
+  EVENT_ASSIGNMENTS
+
+  @@map("hist_import_data_type")
+}
+
+enum HistImportValidationMode {
+  STRICT
+  PERMISSIVE
+
+  @@map("hist_import_validation_mode")
+}
+
+enum HistImportValidationStatus {
+  PENDING
+  VALID
+  INVALID
+  WARNING
+
+  @@map("hist_import_validation_status")
+}
+
+enum HistImportReconciliationStatus {
+  PENDING
+  MATCHED
+  AMBIGUOUS
+  NEW_RECORD
+  RESOLVED
+
+  @@map("hist_import_reconciliation_status")
+}
+
+enum HistImportRecordStatus {
+  PENDING
+  IMPORTED
+  SKIPPED
+  FAILED
+
+  @@map("hist_import_record_status")
+}
+
+enum HistImportEntityType {
+  AMBASSADOR
+  EVENT
+  OPERATOR
+  VENUE
+  SIGN_UP
+  BUDGET
+  PAYROLL
+  EVENT_ASSIGNMENT
+
+  @@map("hist_import_entity_type")
+}
+
+enum HistImportMatchType {
+  EXACT
+  FUZZY
+  NEW_RECORD
+  AMBIGUOUS
+  MANUAL
+
+  @@map("hist_import_match_type")
+}
+
+enum HistImportReconDecision {
+  USE_EXISTING
+  CREATE_NEW
+  MERGE
+  SKIP
+
+  @@map("hist_import_recon_decision")
+}
+
+enum HistImportOperation {
+  CREATE
+  UPDATE
+  LINK
+  SKIP
+
+  @@map("hist_import_operation")
+}
+
+enum HistImportAuditAction {
+  IMPORT_STARTED
+  FILE_UPLOADED
+  FILE_PARSED
+  VALIDATION_STARTED
+  VALIDATION_COMPLETED
+  RECONCILIATION_STARTED
+  RECONCILIATION_DECISION
+  RECONCILIATION_COMPLETED
+  IMPORT_CONFIRMED
+  IMPORT_EXECUTED
+  IMPORT_COMPLETED
+  IMPORT_FAILED
+  IMPORT_CANCELLED
+  RECORD_CREATED
+  RECORD_UPDATED
+  RECORD_LINKED
+  RECORD_SKIPPED
+  USER_OVERRIDE
+  ROLLBACK_INITIATED
+  ROLLBACK_COMPLETED
+
+  @@map("hist_import_audit_action")
+}
+
+enum HistImportAuditSeverity {
+  DEBUG
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+
+  @@map("hist_import_audit_severity")
+}

@@ -336,7 +336,7 @@ export async function disconnectIntegration(provider: IntegrationType): Promise<
  * Log audit event for token operations
  */
 async function logAuditEvent(
-  integrationId: number,
+  integrationId: string | number,
   action: string,
   details: Record<string, unknown>
 ): Promise<void> {

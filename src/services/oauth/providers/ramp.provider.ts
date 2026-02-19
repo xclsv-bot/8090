@@ -20,9 +20,9 @@ const RAMP_TOKEN_URL = 'https://api.ramp.com/v1/public/token';
 
 export function getRampConfig(): RampConfig {
   return {
-    clientId: env.RAMP_CLIENT_ID || '',
-    clientSecret: env.RAMP_CLIENT_SECRET || '',
-    redirectUri: `${env.APP_URL || 'http://localhost:3001'}/api/v1/oauth/ramp/callback`,
+    clientId: process.env.RAMP_CLIENT_ID || '',
+    clientSecret: process.env.RAMP_CLIENT_SECRET || '',
+    redirectUri: `${process.env.APP_URL || 'http://localhost:3001'}/api/v1/oauth/ramp/callback`,
   };
 }
 
@@ -69,7 +69,13 @@ export async function exchangeCodeForTokens(code: string): Promise<RampTokens> {
     throw new Error(`Ramp token exchange failed: ${JSON.stringify(error)}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as {
+    access_token: string;
+    refresh_token: string;
+    token_type?: string;
+    expires_in?: number;
+    scope?: string;
+  };
   
   return {
     accessToken: data.access_token,
@@ -106,7 +112,13 @@ export async function refreshTokens(refreshToken: string): Promise<RampTokens> {
     throw new Error(`Ramp token refresh failed: ${JSON.stringify(error)}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as {
+    access_token: string;
+    refresh_token?: string;
+    token_type?: string;
+    expires_in?: number;
+    scope?: string;
+  };
   
   return {
     accessToken: data.access_token,

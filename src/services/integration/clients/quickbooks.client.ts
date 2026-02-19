@@ -325,3 +325,9 @@ export async function getBalanceSheet(params: {
 
 // Export client for direct use if needed
 export { client as quickbooksClient };
+
+// Re-export types for convenience
+export type { 
+  QuickBooksInvoice, 
+  InternalInvoice,
+} from '../data-mapper.service.js';

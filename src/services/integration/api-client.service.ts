@@ -83,13 +83,13 @@ export function createApiClient(config: ApiClientConfig) {
         });
 
         if (!response.ok) {
-          const errorBody = await response.json().catch(() => ({}));
+          const errorBody = await response.json().catch(() => ({})) as Record<string, unknown>;
           throw new Error(
             `HTTP ${response.status}: ${errorBody.message || errorBody.error || response.statusText}`
           );
         }
 
-        return response.json();
+        return response.json() as Promise<T>;
       },
       retryConfig,
       context
