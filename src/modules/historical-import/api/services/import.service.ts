@@ -175,26 +175,57 @@ function parseCSV(content: string): {
     return { rows: [], columns: [], errors: [] };
   }
 
+  // Find the header row - look for common header patterns
+  // This handles CSVs with summary/metadata rows at the top
+  let headerRowIndex = 0;
+  const headerPatterns = [
+    'Budget/Actual', 'budget/actual', 'Event name', 'event_name', 
+    'Names', 'Ambassador', 'Date', 'Email', 'Phone',
+    'Total Cost', 'Revenue', 'Sign up'
+  ];
+  
+  for (let i = 0; i < Math.min(lines.length, 30); i++) {
+    const lineLower = lines[i].toLowerCase();
+    // Check if this row looks like a header (has multiple recognizable column names)
+    const matchCount = headerPatterns.filter(p => lineLower.includes(p.toLowerCase())).length;
+    if (matchCount >= 2) {
+      headerRowIndex = i;
+      break;
+    }
+    // Also check for "Budget/Actual" specifically for budget files
+    if (lines[i].startsWith('Budget/Actual') || lines[i].startsWith('"Budget/Actual"')) {
+      headerRowIndex = i;
+      break;
+    }
+  }
+
   // Parse header
-  const columns = parseCSVLine(lines[0]);
+  const columns = parseCSVLine(lines[headerRowIndex]);
   const rows: Array<Record<string, unknown>> = [];
   const errors: Array<{ row_number: number; error: string }> = [];
 
-  // Parse data rows
-  for (let i = 1; i < lines.length; i++) {
+  // Parse data rows (starting after header)
+  for (let i = headerRowIndex + 1; i < lines.length; i++) {
     try {
       const values = parseCSVLine(lines[i]);
-      if (values.length !== columns.length) {
+      
+      // Skip empty rows or rows with different column counts (likely metadata)
+      if (values.length === 0 || values.every(v => !v || v.trim() === '')) {
+        continue;
+      }
+      
+      // Allow some flexibility in column count (extra empty columns are common)
+      if (values.length < columns.length - 5) {
         errors.push({
           row_number: i + 1,
-          error: `Expected ${columns.length} columns but found ${values.length}`,
+          error: `Expected ~${columns.length} columns but found ${values.length}`,
         });
         continue;
       }
 
       const row: Record<string, unknown> = {};
       for (let j = 0; j < columns.length; j++) {
-        row[columns[j]] = parseValue(values[j]);
+        row[columns[j]] = parseValue(values[j] || '');
       }
       rows.push(row);
     } catch (err) {
