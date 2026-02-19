@@ -59,7 +59,7 @@ export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
   await fastify.register(dashboardRoutes, { prefix: '/api/v1/dashboard' });
   await fastify.register(leaderboardRoutes, { prefix: '/api/v1/leaderboard' });
   await fastify.register(adminRoutes, { prefix: '/api/v1/admin' });
-  await fastify.register(importRoutes, { prefix: '/api/admin/imports' });
+  await fastify.register(importRoutes, { prefix: '/api/v1/admin/imports' });
   await fastify.register(alertingRoutes, { prefix: '/api/v1/alerting' });
   await fastify.register(exportRoutes, { prefix: '/api/v1/exports' });
   await fastify.register(supportHubRoutes, { prefix: '/api/v1/support-hub' });
