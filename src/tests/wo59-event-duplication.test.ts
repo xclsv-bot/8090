@@ -10,7 +10,7 @@
  * - Conflict detection
  */
 
-import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
+import { describe, it, expect, vi, beforeEach, beforeAll, afterEach } from 'vitest';
 
 // =============================================
 // Mock Setup (Must be before imports)

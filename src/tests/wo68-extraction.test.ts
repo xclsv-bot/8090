@@ -65,7 +65,7 @@ import {
 } from '../services/extractionJobService.js';
 
 // Cast db methods for type safety
-const mockDb = db as {
+const mockDb = db as unknown as {
   query: Mock;
   queryOne: Mock;
   queryMany: Mock;
@@ -229,10 +229,10 @@ describe('WO-68: AI Extraction Pipeline', () => {
         const job = await extractionJobService.createJob(signupId);
         
         expect(job).toBeDefined();
-        expect(job.signup_id).toBe(signupId);
+        expect(job.signupId).toBe(signupId);
         expect(job.status).toBe('pending');
-        expect(job.attempt_count).toBe(0);
-        expect(job.max_attempts).toBe(3);
+        expect(job.attemptCount).toBe(0);
+        expect(job.maxAttempts).toBe(3);
         
         expect(mockDb.queryOne).toHaveBeenCalledWith(
           expect.stringContaining('INSERT INTO signup_extraction_jobs'),
@@ -286,7 +286,7 @@ describe('WO-68: AI Extraction Pipeline', () => {
         
         const job = await extractionJobService.createJob(signupId);
         
-        expect(job.max_attempts).toBe(3);
+        expect(job.maxAttempts).toBe(3);
         
         console.log('✅ 2.3 PASS: Max attempts correctly set to 3');
       });

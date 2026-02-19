@@ -10,7 +10,7 @@
  * - ~30 API endpoints under /api/v1/support-hub
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest';
 
 // ============================================
 // TEST RESULTS TRACKING

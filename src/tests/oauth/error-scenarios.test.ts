@@ -253,13 +253,13 @@ describe('Error Scenarios', () => {
 
       // Verify stored values are not plaintext
       if (storedAccessToken) {
-        const storedString = storedAccessToken.toString();
+        const storedString = String(storedAccessToken);
         expect(storedString).not.toContain('sensitive-access-token-12345');
         expect(storedString).toContain(':'); // Encrypted format iv:tag:data
       }
 
       if (storedRefreshToken) {
-        const storedString = storedRefreshToken.toString();
+        const storedString = String(storedRefreshToken);
         expect(storedString).not.toContain('sensitive-refresh-token-67890');
       }
     });

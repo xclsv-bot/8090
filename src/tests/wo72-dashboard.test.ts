@@ -339,7 +339,7 @@ describe('WO-72: Real-time Analytics Dashboards', () => {
 
     describe('WebSocket Broadcasting', () => {
       it('should broadcast signup updates via eventPublisher', async () => {
-        const publishSpy = vi.spyOn(eventPublisher, 'publish').mockImplementation(() => {});
+        const publishSpy = vi.spyOn(eventPublisher, 'publish').mockImplementation(async () => {});
         
         vi.spyOn(db, 'queryOne').mockResolvedValue({
           total: '50',
@@ -376,7 +376,7 @@ describe('WO-72: Real-time Analytics Dashboards', () => {
       });
 
       it('should broadcast metrics refresh via eventPublisher', async () => {
-        const publishSpy = vi.spyOn(eventPublisher, 'publish').mockImplementation(() => {});
+        const publishSpy = vi.spyOn(eventPublisher, 'publish').mockImplementation(async () => {});
         
         vi.spyOn(db, 'queryOne').mockResolvedValue({
           total: '50',
@@ -912,7 +912,7 @@ describe('WO-72: Real-time Analytics Dashboards', () => {
     });
 
     it('POST /api/v1/dashboard/realtime/refresh should return 200', async () => {
-      vi.mocked(eventPublisher.publish).mockImplementation(() => {});
+      vi.mocked(eventPublisher.publish).mockImplementation(async () => {});
       
       const response = await app.inject({
         method: 'POST',
