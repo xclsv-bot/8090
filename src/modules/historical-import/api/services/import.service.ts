@@ -516,11 +516,32 @@ export async function reconcileFile(
 
   // Analyze each row for potential matches
   const processedNames = new Set<string>();
+  const processedEvents = new Set<string>(); // Track unique events by name+date
+
+  // Check if this is a budgets_actuals import
+  const isBudgetsImport = request.data_types.includes('budgets_actuals');
 
   for (let i = 0; i < storedFile.rows.length; i++) {
     const row = storedFile.rows[i];
 
-    // Check ambassador names
+    // For budgets_actuals, count unique events by name + date
+    if (isBudgetsImport) {
+      const eventName = row['Event name'] || row['Event Name'] || row['event_name'] || row['event'];
+      const eventDate = row['Date'] || row['date'];
+      const rowType = row['Budget/Actual'] || row['budget/actual'];
+      
+      // Only count Budget rows to avoid double-counting (Budget + Actual pairs)
+      if (eventName && typeof eventName === 'string' && rowType === 'Budget') {
+        const eventKey = `${eventDate}_${eventName}`;
+        if (!processedEvents.has(eventKey)) {
+          processedEvents.add(eventKey);
+          newEvents++;
+        }
+      }
+      continue; // Skip generic ambassador/event matching for budget imports
+    }
+
+    // Check ambassador names (for non-budget imports)
     const ambassadorName = row['ambassador'] || row['Ambassador'] || row['name'] || row['Name'];
     if (ambassadorName && typeof ambassadorName === 'string' && !processedNames.has(ambassadorName)) {
       processedNames.add(ambassadorName);
@@ -544,8 +565,8 @@ export async function reconcileFile(
       }
     }
 
-    // Check event names
-    const eventName = row['event'] || row['Event'] || row['event_name'] || row['EventName'];
+    // Check event names (handle various column naming conventions)
+    const eventName = row['event'] || row['Event'] || row['event_name'] || row['EventName'] || row['Event name'] || row['Event Name'];
     if (eventName && typeof eventName === 'string' && !processedNames.has(eventName)) {
       processedNames.add(eventName);
       
@@ -630,16 +651,28 @@ function simulateAmbassadorMatch(name: string): {
   return { isExact: false, candidates: [] };
 }
 
+async function checkEventExists(name: string, date?: string): Promise<boolean> {
+  // Check if event exists in database
+  try {
+    const { db } = await import('../../../../services/database.js');
+    const query = date 
+      ? 'SELECT id FROM events WHERE title = $1 AND event_date = $2 LIMIT 1'
+      : 'SELECT id FROM events WHERE title = $1 LIMIT 1';
+    const params = date ? [name, date] : [name];
+    const result = await db.queryOne<{ id: string }>(query, params);
+    return !!result;
+  } catch {
+    // If DB query fails, assume event doesn't exist
+    return false;
+  }
+}
+
 function simulateEventMatch(name: string): {
   isExact: boolean;
   candidates: CandidateMatch[];
 } {
-  // In production, this would query the events table
-  // Random chance of exact match (50%)
-  if (Math.random() < 0.5) {
-    return { isExact: true, candidates: [] };
-  }
-
+  // For budget imports, assume all events are new (will be created)
+  // The actual import handler will check for duplicates
   return { isExact: false, candidates: [] };
 }
 
