@@ -6,6 +6,7 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { payrollService } from '../services/payrollService.js';
+import { db } from '../services/database.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import { validateBody, validateParams, commonSchemas } from '../middleware/validate.js';
 
@@ -173,5 +174,112 @@ export async function payrollRoutes(fastify: FastifyInstance): Promise<void> {
   }, async () => {
     const stats = await payrollService.getSummaryStats();
     return { success: true, data: stats };
+  });
+
+
+  /**
+   * GET /payroll/entries - List payroll entries (imported historical data)
+   */
+  fastify.get('/entries', {
+    preHandler: [requireRole('admin', 'manager')],
+  }, async (request) => {
+    const { limit, offset, ambassador, startDate, endDate, status } = request.query as {
+      limit?: string;
+      offset?: string;
+      ambassador?: string;
+      startDate?: string;
+      endDate?: string;
+      status?: string;
+    };
+
+    let query = 'SELECT * FROM payroll_entries WHERE 1=1';
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (ambassador) {
+      query += ` AND ambassador_name ILIKE $${paramIndex}`;
+      params.push(`%${ambassador}%`);
+      paramIndex++;
+    }
+
+    if (startDate) {
+      query += ` AND work_date >= $${paramIndex}`;
+      params.push(startDate);
+      paramIndex++;
+    }
+
+    if (endDate) {
+      query += ` AND work_date <= $${paramIndex}`;
+      params.push(endDate);
+      paramIndex++;
+    }
+
+    if (status) {
+      query += ` AND status = $${paramIndex}`;
+      params.push(status);
+      paramIndex++;
+    }
+
+    query += ' ORDER BY work_date DESC, ambassador_name';
+    
+    if (limit) {
+      query += ` LIMIT $${paramIndex}`;
+      params.push(parseInt(limit));
+      paramIndex++;
+    }
+
+    if (offset) {
+      query += ` OFFSET $${paramIndex}`;
+      params.push(parseInt(offset));
+    }
+
+    const entries = await db.queryMany(query, params);
+    
+    // Get total count
+    const countResult = await db.queryOne<{ count: string }>(
+      'SELECT COUNT(*) as count FROM payroll_entries'
+    );
+
+    return {
+      success: true,
+      data: {
+        entries,
+        total: parseInt(countResult?.count || '0'),
+      },
+    };
+  });
+
+  /**
+   * GET /payroll/entries/summary - Get summary stats for payroll entries
+   */
+  fastify.get('/entries/summary', {
+    preHandler: [requireRole('admin', 'manager')],
+  }, async () => {
+    const summary = await db.queryOne<{
+      total_entries: string;
+      total_amount: string;
+      paid_amount: string;
+      pending_amount: string;
+      unique_ambassadors: string;
+    }>(`
+      SELECT 
+        COUNT(*) as total_entries,
+        COALESCE(SUM(total), 0) as total_amount,
+        COALESCE(SUM(CASE WHEN status = 'paid' THEN total ELSE 0 END), 0) as paid_amount,
+        COALESCE(SUM(CASE WHEN status = 'pending' THEN total ELSE 0 END), 0) as pending_amount,
+        COUNT(DISTINCT ambassador_name) as unique_ambassadors
+      FROM payroll_entries
+    `);
+
+    return {
+      success: true,
+      data: {
+        totalEntries: parseInt(summary?.total_entries || '0'),
+        totalAmount: parseFloat(summary?.total_amount || '0'),
+        paidAmount: parseFloat(summary?.paid_amount || '0'),
+        pendingAmount: parseFloat(summary?.pending_amount || '0'),
+        uniqueAmbassadors: parseInt(summary?.unique_ambassadors || '0'),
+      },
+    };
   });
 }
