@@ -15,7 +15,8 @@ const SCHEMA_ORDER = [
   'cpa_schema.sql',       // CPA rates
   'ambassador_schema.sql', // Ambassador extensions
   'event_management_schema.sql', // Event management
-  'signup_schema.sql',    // Signup extensions
+  'signup_schema.sql',    // Signup extensions (WO-52)
+  'signup_management_schema.sql', // Sign-up management (WO-66: extraction, sync, audit)
   'availability_schema.sql', // Availability & scheduling
   'event_chat_schema.sql', // Chat system
   'event_logs.sql',       // Event logs

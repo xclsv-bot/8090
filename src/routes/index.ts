@@ -8,6 +8,8 @@ import { availabilityRoutes } from './availability.js';
 import { chatRoutes } from './chat.js';
 import { cpaRoutes } from './cpa.js';
 import { signupRoutes } from './signups.js';
+import { extractionRoutes } from './extraction.js';
+import { customerioRoutes } from './customerio.js';
 import { payrollRoutes } from './payroll.js';
 import { integrationRoutes } from './integrations.js';
 import { financialRoutes } from './financial.js';
@@ -37,6 +39,8 @@ export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
   await fastify.register(chatRoutes, { prefix: '/api/v1/chat' });
   await fastify.register(cpaRoutes, { prefix: '/api/v1/cpa' });
   await fastify.register(signupRoutes, { prefix: '/api/v1/signups' });
+  await fastify.register(extractionRoutes, { prefix: '/api/v1/signups/extraction' });
+  await fastify.register(customerioRoutes, { prefix: '/api/v1/signups/customerio' });
   await fastify.register(payrollRoutes, { prefix: '/api/v1/payroll' });
   await fastify.register(integrationRoutes, { prefix: '/api/v1/integrations' });
   await fastify.register(financialRoutes, { prefix: '/api/v1/financial' });

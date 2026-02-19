@@ -13,6 +13,15 @@ export const EventTypes = {
   SIGNUP_VALIDATED: 'sign_up.validated',
   SIGNUP_REJECTED: 'sign_up.rejected',
   
+  // Sign-up extraction events (WO-68)
+  SIGNUP_EXTRACTION_COMPLETED: 'sign_up.extraction_completed',
+  SIGNUP_EXTRACTION_CONFIRMED: 'sign_up.extraction_confirmed',
+  SIGNUP_EXTRACTION_SKIPPED: 'sign_up.extraction_skipped',
+  
+  // Customer.io sync events (WO-69)
+  SIGNUP_CUSTOMERIO_SYNCED: 'sign_up.customerio_synced',
+  SIGNUP_CUSTOMERIO_SYNC_FAILED: 'sign_up.customerio_sync_failed',
+  
   // Event (venue) events
   EVENT_CREATED: 'event.created',
   EVENT_UPDATED: 'event.updated',

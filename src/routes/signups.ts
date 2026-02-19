@@ -1,11 +1,13 @@
 /**
  * Signup Routes
  * WO-53, WO-54: Sign-Up Management API
+ * WO-67: Sign-up submission API and duplicate detection system
  */
 
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { signupService } from '../services/signupService.js';
+import { signupSubmissionService } from '../services/signupSubmissionService.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import { validateBody, validateParams, validateQuery, commonSchemas } from '../middleware/validate.js';
 
@@ -36,8 +38,173 @@ const searchSchema = z.object({
   limit: z.string().optional().default('50').transform(Number),
 });
 
+// WO-67: Event sign-up submission schema
+const eventSignupSchema = z.object({
+  eventId: z.string().uuid({ message: 'Event ID must be a valid UUID' }),
+  operatorId: z.number().int().positive({ message: 'Operator ID must be a positive integer' }),
+  customerName: z.string().min(1, 'Customer name is required').max(200),
+  customerEmail: z.string().email({ message: 'Valid email is required' }),
+  customerPhone: z.string().optional(),
+  customerState: z.string().length(2).toUpperCase().optional(),
+  idempotencyKey: z.string().uuid({ message: 'Idempotency key must be a valid UUID v4' }),
+  betSlipPhoto: z.string().optional(), // Base64 encoded image
+  betSlipContentType: z.string().optional(),
+});
+
+// WO-67: Solo chat sign-up submission schema
+const soloSignupSchema = z.object({
+  soloChatId: z.string().uuid({ message: 'Solo chat ID must be a valid UUID' }),
+  operatorId: z.number().int().positive({ message: 'Operator ID must be a positive integer' }),
+  customerName: z.string().min(1, 'Customer name is required').max(200),
+  customerEmail: z.string().email({ message: 'Valid email is required' }),
+  customerPhone: z.string().optional(),
+  customerState: z.string().length(2).toUpperCase().optional(),
+  idempotencyKey: z.string().uuid({ message: 'Idempotency key must be a valid UUID v4' }),
+  betSlipPhoto: z.string().optional(), // Base64 encoded image
+  betSlipContentType: z.string().optional(),
+});
+
 export async function signupRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.addHook('preHandler', authenticate);
+
+  // ============================================
+  // WO-67: Sign-Up Submission Endpoints
+  // ============================================
+
+  /**
+   * POST /signups/event - Submit sign-up through event chat
+   * 
+   * Accepts bet slip photo, customer info, operator ID, and idempotency key.
+   * Performs duplicate detection and locks CPA rate at submission time.
+   */
+  fastify.post('/event', {
+    preHandler: [validateBody(eventSignupSchema)],
+  }, async (request, reply) => {
+    const input = request.body as z.infer<typeof eventSignupSchema>;
+    
+    if (!request.user) {
+      return reply.status(401).send({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
+      });
+    }
+
+    const context = {
+      ambassadorId: request.user.id,
+      ipAddress: request.ip,
+      deviceType: request.headers['user-agent'] || undefined,
+    };
+
+    const result = await signupSubmissionService.submitEventSignUp(input, context);
+
+    if (result.success === false) {
+      // Map error codes to HTTP status codes
+      const errorResult = result;
+      const statusCode = errorResult.error.errorCode === 'duplicate_detected' ? 409
+        : errorResult.error.errorCode === 'validation_error' ? 400
+        : errorResult.error.errorCode === 'image_upload_failed' ? 422
+        : errorResult.error.errorCode === 'cpa_lookup_failed' ? 422
+        : 400;
+
+      return reply.status(statusCode).send({
+        success: false,
+        error: {
+          code: errorResult.error.errorCode.toUpperCase(),
+          message: errorResult.error.error,
+          details: errorResult.error.details,
+        },
+      });
+    }
+
+    // Return 200 if idempotent return, 201 if new creation
+    const statusCode = result.isIdempotentReturn ? 200 : 201;
+    
+    return reply.status(statusCode).send({
+      success: true,
+      data: result.signup,
+      meta: { isIdempotentReturn: result.isIdempotentReturn },
+    });
+  });
+
+  /**
+   * POST /signups/solo - Submit sign-up through solo chat
+   * 
+   * Same as event submission but associates with solo chat instead of event.
+   */
+  fastify.post('/solo', {
+    preHandler: [validateBody(soloSignupSchema)],
+  }, async (request, reply) => {
+    const input = request.body as z.infer<typeof soloSignupSchema>;
+    
+    if (!request.user) {
+      return reply.status(401).send({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
+      });
+    }
+
+    const context = {
+      ambassadorId: request.user.id,
+      ipAddress: request.ip,
+      deviceType: request.headers['user-agent'] || undefined,
+    };
+
+    const result = await signupSubmissionService.submitSoloSignUp(input, context);
+
+    if (result.success === false) {
+      const errorResult = result;
+      const statusCode = errorResult.error.errorCode === 'duplicate_detected' ? 409
+        : errorResult.error.errorCode === 'validation_error' ? 400
+        : errorResult.error.errorCode === 'image_upload_failed' ? 422
+        : errorResult.error.errorCode === 'cpa_lookup_failed' ? 422
+        : 400;
+
+      return reply.status(statusCode).send({
+        success: false,
+        error: {
+          code: errorResult.error.errorCode.toUpperCase(),
+          message: errorResult.error.error,
+          details: errorResult.error.details,
+        },
+      });
+    }
+
+    const statusCode = result.isIdempotentReturn ? 200 : 201;
+    
+    return reply.status(statusCode).send({
+      success: true,
+      data: result.signup,
+      meta: { isIdempotentReturn: result.isIdempotentReturn },
+    });
+  });
+
+  /**
+   * GET /signups/:id/audit - Get audit log for a sign-up
+   */
+  fastify.get('/:id/audit', {
+    preHandler: [validateParams(commonSchemas.id)],
+  }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    
+    const auditLog = await signupSubmissionService.getAuditLog(id);
+    
+    if (auditLog.length === 0) {
+      // Check if signup exists
+      const signup = await signupService.getById(id);
+      if (!signup) {
+        return reply.status(404).send({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Signup not found' },
+        });
+      }
+    }
+
+    return { success: true, data: auditLog };
+  });
+
+  // ============================================
+  // Existing Routes (WO-53, WO-54)
+  // ============================================
 
   /**
    * GET /signups - Search signups

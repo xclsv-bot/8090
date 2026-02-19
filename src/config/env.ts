@@ -34,6 +34,14 @@ const envSchema = z.object({
   AWS_SECRET_ACCESS_KEY: z.string().optional().default(''),
   S3_BUCKET_NAME: z.string().optional().default('xclsv-core-platform'),
 
+  // AI Vision Service (WO-68)
+  AI_VISION_API_URL: z.string().optional().default(''),
+  AI_VISION_API_KEY: z.string().optional().default('mock'),
+
+  // Customer.io Integration (WO-69)
+  CUSTOMERIO_SITE_ID: z.string().optional().default(''),
+  CUSTOMERIO_API_KEY: z.string().optional().default(''),
+
   // Rate Limiting
   RATE_LIMIT_MAX: z.string().default('100').transform(Number),
   RATE_LIMIT_WINDOW_MS: z.string().default('60000').transform(Number),

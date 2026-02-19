@@ -15,7 +15,7 @@ export async function authenticate(
   if (!env.CLERK_SECRET_KEY) {
     logger.warn('Clerk not configured - allowing unauthenticated access');
     request.user = {
-      id: 'dev-user',
+      id: 'f0dab2b2-21b4-4611-b384-134b721b3490', // Valid UUID for dev testing
       email: 'dev@xclsv.com',
       role: 'admin' as UserRole,
       firstName: 'Dev',
