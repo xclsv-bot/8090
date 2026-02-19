@@ -63,3 +63,12 @@ export interface PaginationParams {
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
 }
+
+// Re-export analytics types (WO-71)
+export * from './analytics.js';
+
+// Re-export dashboard types (WO-72)
+export * from './dashboard.js';
+
+// Re-export leaderboard types (WO-73)
+export * from './leaderboard.js';

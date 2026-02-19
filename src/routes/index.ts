@@ -17,7 +17,11 @@ import { operatorRoutes } from './operators.js';
 import { reportRoutes } from './reports.js';
 import { analyticsRoutes } from './analytics.js';
 import { performanceRoutes } from './performance.js';
+import { dashboardRoutes } from './dashboard.js';
+import { leaderboardRoutes } from './leaderboard.js';
 import { adminRoutes } from './admin.js';
+import { alertingRoutes } from './alerting.js';
+import { exportRoutes } from './exports.js';
 import oauthRoutes from './oauth.js';
 import webhookRoutes from './webhooks.js';
 
@@ -48,7 +52,11 @@ export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
   await fastify.register(reportRoutes, { prefix: '/api/v1/reports' });
   await fastify.register(analyticsRoutes, { prefix: '/api/v1/analytics' });
   await fastify.register(performanceRoutes, { prefix: '/api/v1/performance' });
+  await fastify.register(dashboardRoutes, { prefix: '/api/v1/dashboard' });
+  await fastify.register(leaderboardRoutes, { prefix: '/api/v1/leaderboard' });
   await fastify.register(adminRoutes, { prefix: '/api/v1/admin' });
+  await fastify.register(alertingRoutes, { prefix: '/api/v1/alerting' });
+  await fastify.register(exportRoutes, { prefix: '/api/v1/exports' });
   await fastify.register(oauthRoutes, { prefix: '/api/v1/oauth' });
   await fastify.register(webhookRoutes, { prefix: '/api/v1/webhooks' });
 

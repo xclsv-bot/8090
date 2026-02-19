@@ -47,6 +47,11 @@ export const EventTypes = {
   // System events
   CONNECTION_ESTABLISHED: 'connection.established',
   CONNECTION_ERROR: 'connection.error',
+  
+  // Dashboard events (WO-72)
+  DASHBOARD_SIGNUP_UPDATE: 'dashboard.signup_update',
+  DASHBOARD_METRICS_REFRESH: 'dashboard.metrics_refresh',
+  DASHBOARD_ALERT: 'dashboard.alert',
 } as const;
 
 export type EventType = typeof EventTypes[keyof typeof EventTypes];
@@ -116,12 +121,18 @@ export interface ExternalSyncEvent extends BaseEvent {
   };
 }
 
+export interface DashboardEvent extends BaseEvent {
+  type: 'dashboard.signup_update' | 'dashboard.metrics_refresh' | 'dashboard.alert';
+  payload: Record<string, unknown>;
+}
+
 export type PlatformEvent = 
   | SignUpEvent 
   | EventUpdateEvent 
   | AmbassadorEvent 
   | PayrollEvent 
   | ExternalSyncEvent
+  | DashboardEvent
   | BaseEvent;
 
 // ============================================

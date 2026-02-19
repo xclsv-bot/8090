@@ -23,6 +23,9 @@ const SCHEMA_ORDER = [
   'financial_schema.sql', // Financial management
   'payroll_schema.sql',   // Payroll
   'integrations_schema.sql', // Integrations
+  'analytics_schema.sql', // Analytics & Reporting (WO-71)
+  'leaderboard_schema.sql', // Leaderboard & Ambassador Analytics (WO-73)
+  'alerting_schema.sql',  // KPI Alerting & Threshold Versioning (WO-74)
 ];
 
 async function migrate() {
