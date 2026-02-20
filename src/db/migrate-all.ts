@@ -21,6 +21,7 @@ const SCHEMA_ORDER = [
   'event_chat_schema.sql', // Chat system
   'event_logs.sql',       // Event logs
   'financial_schema.sql', // Financial management
+  'budget_actuals_schema.sql', // Budget vs Actuals (WO-82)
   'payroll_schema.sql',   // Payroll
   'integrations_schema.sql', // Integrations
   'analytics_schema.sql', // Analytics & Reporting (WO-71)

@@ -14,6 +14,7 @@ import { customerioRoutes } from './customerio.js';
 import { payrollRoutes } from './payroll.js';
 import { integrationRoutes } from './integrations.js';
 import { financialRoutes } from './financial.js';
+import { financialImportRoutes } from './financial-import.routes.js';
 import { operatorRoutes } from './operators.js';
 import { reportRoutes } from './reports.js';
 import { analyticsRoutes } from './analytics.js';
@@ -52,6 +53,7 @@ export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
   await fastify.register(payrollRoutes, { prefix: '/api/v1/payroll' });
   await fastify.register(integrationRoutes, { prefix: '/api/v1/integrations' });
   await fastify.register(financialRoutes, { prefix: '/api/v1/financial' });
+  await fastify.register(financialImportRoutes, { prefix: '/api/v1' });
   await fastify.register(operatorRoutes, { prefix: '/api/v1/operators' });
   await fastify.register(reportRoutes, { prefix: '/api/v1/reports' });
   await fastify.register(analyticsRoutes, { prefix: '/api/v1/analytics' });
