@@ -29,14 +29,18 @@ const statusColors: Record<string, string> = {
 };
 
 const skillLevelColors: Record<string, string> = {
-  top_performer: 'bg-purple-100 text-purple-700',
-  outstanding: 'bg-blue-100 text-blue-700',
-  good: 'bg-green-100 text-green-700',
-  okay: 'bg-yellow-100 text-yellow-700',
-  not_a_good_fit: 'bg-red-100 text-red-700',
+  trainee: 'bg-gray-100 text-gray-700',
+  standard: 'bg-blue-100 text-blue-700',
+  senior: 'bg-green-100 text-green-700',
+  lead: 'bg-purple-100 text-purple-700',
 };
 
-export function AmbassadorAssignmentSection({ eventId, eventRegion }: AmbassadorAssignmentSectionProps) {
+function getAmbassadorName(amb: Ambassador | undefined): string {
+  if (!amb) return 'Unknown';
+  return `${amb.firstName || ''} ${amb.lastName || ''}`.trim() || 'Unknown';
+}
+
+export function AmbassadorAssignmentSection({ eventId }: AmbassadorAssignmentSectionProps) {
   const [assignments, setAssignments] = useState<EventAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -66,7 +70,6 @@ export function AmbassadorAssignmentSection({ eventId, eventRegion }: Ambassador
     setLoadingSuggestions(true);
     
     try {
-      // Load suggestions and all ambassadors in parallel
       const [suggestRes, ambassadorsRes] = await Promise.all([
         assignmentsApi.suggest(eventId, 10).catch(() => ({ data: [] })),
         ambassadorsApi.list({ limit: 200 }),
@@ -85,11 +88,10 @@ export function AmbassadorAssignmentSection({ eventId, eventRegion }: Ambassador
     try {
       await assignmentsApi.create({ eventId, ambassadorId });
       await loadAssignments();
-      // Remove from suggestions
       setSuggestions(prev => prev.filter(s => s.ambassador.id !== ambassadorId));
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to assign:', error);
-      alert(error.message || 'Failed to assign ambassador');
+      alert((error as Error).message || 'Failed to assign ambassador');
     } finally {
       setAssigning(null);
     }
@@ -106,14 +108,13 @@ export function AmbassadorAssignmentSection({ eventId, eventRegion }: Ambassador
     }
   }
 
-  // Filter ambassadors by search and exclude already assigned
   const assignedIds = new Set(assignments.map(a => a.ambassadorId));
   const filteredAmbassadors = allAmbassadors.filter(amb => {
     if (assignedIds.has(amb.id)) return false;
-    if (!searchQuery) return false; // Only show when searching
+    if (!searchQuery) return false;
     const query = searchQuery.toLowerCase();
-    return `${amb.firstName} ${amb.lastName}`?.toLowerCase().includes(query) || 
-           amb.email?.toLowerCase().includes(query);
+    const fullName = getAmbassadorName(amb).toLowerCase();
+    return fullName.includes(query) || amb.email?.toLowerCase().includes(query);
   });
 
   if (loading) {
@@ -150,7 +151,7 @@ export function AmbassadorAssignmentSection({ eventId, eventRegion }: Ambassador
               <div key={assignment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div>
                   <p className="font-medium text-sm">
-                    {assignment.ambassador?.name || 'Unknown'}
+                    {getAmbassadorName(assignment.ambassador)}
                   </p>
                   <div className="flex items-center gap-2 mt-1">
                     <Badge className={statusColors[assignment.status] || 'bg-gray-100'}>
@@ -158,7 +159,7 @@ export function AmbassadorAssignmentSection({ eventId, eventRegion }: Ambassador
                     </Badge>
                     {assignment.ambassador?.skillLevel && (
                       <Badge variant="outline" className="text-xs">
-                        {assignment.ambassador.skillLevel.replace('_', ' ')}
+                        {assignment.ambassador.skillLevel}
                       </Badge>
                     )}
                   </div>
@@ -176,14 +177,12 @@ export function AmbassadorAssignmentSection({ eventId, eventRegion }: Ambassador
         )}
       </Card>
 
-      {/* Add Ambassador Modal */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add Ambassador</DialogTitle>
           </DialogHeader>
 
-          {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
@@ -200,7 +199,6 @@ export function AmbassadorAssignmentSection({ eventId, eventRegion }: Ambassador
             </div>
           ) : (
             <>
-              {/* Suggestions */}
               {suggestions.length > 0 && !searchQuery && (
                 <div>
                   <h4 className="text-sm font-medium text-gray-500 mb-2 flex items-center gap-1">
@@ -215,7 +213,7 @@ export function AmbassadorAssignmentSection({ eventId, eventRegion }: Ambassador
                       >
                         <div>
                           <div className="flex items-center gap-2">
-                            <p className="font-medium text-sm">{suggestion.`${ambassador.firstName} ${ambassador.lastName}`}</p>
+                            <p className="font-medium text-sm">{getAmbassadorName(suggestion.ambassador)}</p>
                             {suggestion.hasConflict && (
                               <AlertTriangle className="h-4 w-4 text-yellow-500" title={suggestion.conflictDetails} />
                             )}
@@ -223,18 +221,13 @@ export function AmbassadorAssignmentSection({ eventId, eventRegion }: Ambassador
                           <div className="flex items-center gap-2 mt-1">
                             {suggestion.ambassador.skillLevel && (
                               <Badge className={skillLevelColors[suggestion.ambassador.skillLevel] || 'bg-gray-100'} variant="outline">
-                                {suggestion.ambassador.skillLevel.replace('_', ' ')}
+                                {suggestion.ambassador.skillLevel}
                               </Badge>
                             )}
                             <span className="text-xs text-gray-500">
                               Score: {suggestion.score}
                             </span>
                           </div>
-                          {suggestion.reasons.length > 0 && (
-                            <p className="text-xs text-gray-400 mt-1">
-                              {suggestion.reasons.slice(0, 2).join(' • ')}
-                            </p>
-                          )}
                         </div>
                         <Button
                           size="sm"
@@ -253,7 +246,6 @@ export function AmbassadorAssignmentSection({ eventId, eventRegion }: Ambassador
                 </div>
               )}
 
-              {/* Search Results */}
               {searchQuery && (
                 <div>
                   <h4 className="text-sm font-medium text-gray-500 mb-2">
@@ -271,15 +263,12 @@ export function AmbassadorAssignmentSection({ eventId, eventRegion }: Ambassador
                           className="flex items-center justify-between p-3 border rounded-lg"
                         >
                           <div>
-                            <p className="font-medium text-sm">{`${ambassador.firstName} ${ambassador.lastName}`}</p>
+                            <p className="font-medium text-sm">{getAmbassadorName(ambassador)}</p>
                             <div className="flex items-center gap-2 mt-1">
                               {ambassador.skillLevel && (
                                 <Badge className={skillLevelColors[ambassador.skillLevel] || 'bg-gray-100'} variant="outline">
-                                  {ambassador.skillLevel.replace('_', ' ')}
+                                  {ambassador.skillLevel}
                                 </Badge>
-                              )}
-                              false && (
-                                <span className="text-xs text-gray-500">{ambassador.homeRegion}</span>
                               )}
                             </div>
                           </div>
