@@ -112,7 +112,7 @@ export function AmbassadorAssignmentSection({ eventId, eventRegion }: Ambassador
     if (assignedIds.has(amb.id)) return false;
     if (!searchQuery) return false; // Only show when searching
     const query = searchQuery.toLowerCase();
-    return amb.name?.toLowerCase().includes(query) || 
+    return `${amb.firstName} ${amb.lastName}`?.toLowerCase().includes(query) || 
            amb.email?.toLowerCase().includes(query);
   });
 
@@ -215,7 +215,7 @@ export function AmbassadorAssignmentSection({ eventId, eventRegion }: Ambassador
                       >
                         <div>
                           <div className="flex items-center gap-2">
-                            <p className="font-medium text-sm">{suggestion.ambassador.name}</p>
+                            <p className="font-medium text-sm">{suggestion.`${ambassador.firstName} ${ambassador.lastName}`}</p>
                             {suggestion.hasConflict && (
                               <AlertTriangle className="h-4 w-4 text-yellow-500" title={suggestion.conflictDetails} />
                             )}
@@ -271,14 +271,14 @@ export function AmbassadorAssignmentSection({ eventId, eventRegion }: Ambassador
                           className="flex items-center justify-between p-3 border rounded-lg"
                         >
                           <div>
-                            <p className="font-medium text-sm">{ambassador.name}</p>
+                            <p className="font-medium text-sm">{`${ambassador.firstName} ${ambassador.lastName}`}</p>
                             <div className="flex items-center gap-2 mt-1">
                               {ambassador.skillLevel && (
                                 <Badge className={skillLevelColors[ambassador.skillLevel] || 'bg-gray-100'} variant="outline">
                                   {ambassador.skillLevel.replace('_', ' ')}
                                 </Badge>
                               )}
-                              {ambassador.homeRegion && (
+                              false && (
                                 <span className="text-xs text-gray-500">{ambassador.homeRegion}</span>
                               )}
                             </div>
