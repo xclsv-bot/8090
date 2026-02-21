@@ -1,17 +1,20 @@
 -- Ambassador Availability & Event Scheduling Schema
 -- WO-34: Ambassador Availability data model and confirmation system
+-- WO-89: Availability System Restructure - Patterns + Exceptions with timezone
 
 -- ============================================
 -- TABLES
 -- ============================================
 
--- General Availability: Weekly recurring availability
+-- General Availability: Weekly recurring availability patterns
+-- Each row represents an available time slot on a specific day of week
 CREATE TABLE IF NOT EXISTS ambassador_general_availability (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     ambassador_id UUID NOT NULL REFERENCES ambassadors(id) ON DELETE CASCADE,
-    day_of_week INTEGER NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
+    day_of_week INTEGER NOT NULL CHECK (day_of_week BETWEEN 0 AND 6), -- 0=Sunday, 6=Saturday
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
+    timezone VARCHAR(50) DEFAULT 'America/New_York', -- WO-89: IANA timezone
     is_active BOOLEAN NOT NULL DEFAULT true,
     preferred_regions TEXT[],
     notes TEXT,
@@ -21,11 +24,14 @@ CREATE TABLE IF NOT EXISTS ambassador_general_availability (
     CONSTRAINT unique_ambassador_day_time UNIQUE (ambassador_id, day_of_week, start_time)
 );
 
--- Availability Exceptions: One-off unavailability
+-- Availability Exceptions: One-off overrides
+-- is_available=false: unavailable on this date (blocks pattern)
+-- is_available=true: available override (adds availability even if no pattern)
 CREATE TABLE IF NOT EXISTS ambassador_availability_exceptions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     ambassador_id UUID NOT NULL REFERENCES ambassadors(id) ON DELETE CASCADE,
     exception_date DATE NOT NULL,
+    is_available BOOLEAN DEFAULT false, -- WO-89: true=available override, false=unavailable
     all_day BOOLEAN DEFAULT true,
     start_time TIME,
     end_time TIME,
@@ -72,6 +78,7 @@ CREATE INDEX IF NOT EXISTS idx_general_avail_active ON ambassador_general_availa
 
 CREATE INDEX IF NOT EXISTS idx_exceptions_ambassador ON ambassador_availability_exceptions(ambassador_id);
 CREATE INDEX IF NOT EXISTS idx_exceptions_date ON ambassador_availability_exceptions(exception_date);
+CREATE INDEX IF NOT EXISTS idx_exceptions_is_available ON ambassador_availability_exceptions(ambassador_id, exception_date, is_available); -- WO-89
 
 CREATE INDEX IF NOT EXISTS idx_scheduling_event ON event_scheduling_requests(event_id);
 CREATE INDEX IF NOT EXISTS idx_scheduling_ambassador ON event_scheduling_requests(ambassador_id);

@@ -12,9 +12,12 @@ import { signupRoutes } from './signups.js';
 import { extractionRoutes } from './extraction.js';
 import { customerioRoutes } from './customerio.js';
 import { payrollRoutes } from './payroll.js';
+import { payStatementsRoutes } from './pay-statements.js';
 import { integrationRoutes } from './integrations.js';
 import { financialRoutes } from './financial.js';
 import { financialImportRoutes } from './financial-import.routes.js';
+import { signupImportRoutes } from './imports/signups.js';
+import { budgetAllocationRoutes } from './budget-allocations.js';
 import { operatorRoutes } from './operators.js';
 import { reportRoutes } from './reports.js';
 import { analyticsRoutes } from './analytics.js';
@@ -24,11 +27,15 @@ import { leaderboardRoutes } from './leaderboard.js';
 import { adminRoutes } from './admin.js';
 import { importRoutes } from './admin/imports/index.js';
 import { adminChatRoutes } from './admin/chat.js';
+import { eventImportRoutes } from './imports/events.js';
 import { alertingRoutes } from './alerting.js';
 import { exportRoutes } from './exports.js';
 import { supportHubRoutes } from './support-hub/index.js';
+import { trafficPredictionRoutes } from './traffic-prediction.js';
+import { sportsCalendarRoutes } from './sports-calendar.js';
 import oauthRoutes from './oauth.js';
 import webhookRoutes from './webhooks.js';
+import { manualInsightRoutes } from './manual-insights.js';
 
 /**
  * Register all routes
@@ -52,9 +59,12 @@ export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
   await fastify.register(extractionRoutes, { prefix: '/api/v1/signups/extraction' });
   await fastify.register(customerioRoutes, { prefix: '/api/v1/signups/customerio' });
   await fastify.register(payrollRoutes, { prefix: '/api/v1/payroll' });
+  await fastify.register(payStatementsRoutes, { prefix: '/api/v1/pay-statements' });
   await fastify.register(integrationRoutes, { prefix: '/api/v1/integrations' });
   await fastify.register(financialRoutes, { prefix: '/api/v1/financial' });
   await fastify.register(financialImportRoutes, { prefix: '/api/v1' });
+  await fastify.register(signupImportRoutes, { prefix: '/api/v1/imports/signups' });
+  await fastify.register(budgetAllocationRoutes, { prefix: '/api/v1/budget-allocations' });
   await fastify.register(operatorRoutes, { prefix: '/api/v1/operators' });
   await fastify.register(reportRoutes, { prefix: '/api/v1/reports' });
   await fastify.register(analyticsRoutes, { prefix: '/api/v1/analytics' });
@@ -63,12 +73,16 @@ export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
   await fastify.register(leaderboardRoutes, { prefix: '/api/v1/leaderboard' });
   await fastify.register(adminRoutes, { prefix: '/api/v1/admin' });
   await fastify.register(importRoutes, { prefix: '/api/v1/admin/imports' });
+  await fastify.register(eventImportRoutes, { prefix: '/api/v1/imports/events' });
   await fastify.register(adminChatRoutes, { prefix: '/api/v1/admin/chats' });
   await fastify.register(alertingRoutes, { prefix: '/api/v1/alerting' });
   await fastify.register(exportRoutes, { prefix: '/api/v1/exports' });
   await fastify.register(supportHubRoutes, { prefix: '/api/v1/support-hub' });
+  await fastify.register(trafficPredictionRoutes, { prefix: '/api/v1/traffic-prediction' });
+  await fastify.register(sportsCalendarRoutes, { prefix: '/api/v1/sports-calendar' });
   await fastify.register(oauthRoutes, { prefix: '/api/v1/oauth' });
   await fastify.register(webhookRoutes, { prefix: '/api/v1/webhooks' });
+  await fastify.register(manualInsightRoutes, { prefix: '/api/v1/manual-insights' });
 
   // Root endpoint
   fastify.get('/', async () => {

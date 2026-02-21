@@ -81,3 +81,12 @@ export * from './support-hub-realtime.js';
 
 // Re-export event duplication types (WO-59)
 export * from './event-duplication.js';
+
+// Re-export sports calendar types (WO-84)
+export * from './sportsCalendar.js';
+
+// Re-export pay statement types (WO-91)
+export * from './payStatement.js';
+
+// Re-export manual insight types (WO-86)
+export * from './manualInsight.js';
