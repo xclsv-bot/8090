@@ -40,6 +40,18 @@ function getAmbassadorName(amb: Ambassador | undefined): string {
   return `${amb.firstName || ''} ${amb.lastName || ''}`.trim() || 'Unknown';
 }
 
+function getAssignmentName(assignment: EventAssignment): string {
+  // Backend returns flat fields from JOIN
+  if (assignment.firstName || assignment.lastName) {
+    return `${assignment.firstName || ''} ${assignment.lastName || ''}`.trim();
+  }
+  // Fallback to nested ambassador
+  if (assignment.ambassador) {
+    return getAmbassadorName(assignment.ambassador);
+  }
+  return 'Unknown';
+}
+
 export function AmbassadorAssignmentSection({ eventId }: AmbassadorAssignmentSectionProps) {
   const [assignments, setAssignments] = useState<EventAssignment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -151,15 +163,15 @@ export function AmbassadorAssignmentSection({ eventId }: AmbassadorAssignmentSec
               <div key={assignment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div>
                   <p className="font-medium text-sm">
-                    {getAmbassadorName(assignment.ambassador)}
+                    {getAssignmentName(assignment)}
                   </p>
                   <div className="flex items-center gap-2 mt-1">
                     <Badge className={statusColors[assignment.status] || 'bg-gray-100'}>
                       {assignment.status}
                     </Badge>
-                    {assignment.ambassador?.skillLevel && (
+                    {(assignment.skillLevel || assignment.ambassador?.skillLevel) && (
                       <Badge variant="outline" className="text-xs">
-                        {assignment.ambassador.skillLevel}
+                        {assignment.skillLevel || assignment.ambassador?.skillLevel}
                       </Badge>
                     )}
                   </div>

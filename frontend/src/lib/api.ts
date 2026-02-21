@@ -231,6 +231,12 @@ export interface EventAssignment {
   id: string;
   eventId: string;
   ambassadorId: string;
+  // Flat ambassador fields from JOIN
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  skillLevel?: string;
+  // Nested ambassador (for frontend convenience)
   ambassador?: Ambassador;
   role?: string;
   scheduledStart?: string;
