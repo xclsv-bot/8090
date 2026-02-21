@@ -37,6 +37,74 @@ export default function FinancialPage() {
   const [reconciliationQueue, setReconciliationQueue] = useState<ExpenseReconciliationItem[]>([]);
   const [venuePerformance, setVenuePerformance] = useState<VenuePerformance[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dateFilter, setDateFilter] = useState<'all' | 'this-week' | 'last-week' | 'this-month' | 'last-month' | 'this-pay-period' | 'last-pay-period'>('all');
+
+  // Date filter helpers
+  const getDateRange = (filter: typeof dateFilter): { start: Date; end: Date } | null => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    switch (filter) {
+      case 'this-week': {
+        const dayOfWeek = today.getDay();
+        const start = new Date(today);
+        start.setDate(today.getDate() - dayOfWeek);
+        const end = new Date(start);
+        end.setDate(start.getDate() + 6);
+        return { start, end };
+      }
+      case 'last-week': {
+        const dayOfWeek = today.getDay();
+        const end = new Date(today);
+        end.setDate(today.getDate() - dayOfWeek - 1);
+        const start = new Date(end);
+        start.setDate(end.getDate() - 6);
+        return { start, end };
+      }
+      case 'this-month': {
+        const start = new Date(today.getFullYear(), today.getMonth(), 1);
+        const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        return { start, end };
+      }
+      case 'last-month': {
+        const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const end = new Date(today.getFullYear(), today.getMonth(), 0);
+        return { start, end };
+      }
+      case 'this-pay-period': {
+        // Bi-weekly pay periods starting from a known date (Jan 1, 2025)
+        const payPeriodStart = new Date(2025, 0, 1);
+        const daysSinceStart = Math.floor((today.getTime() - payPeriodStart.getTime()) / (1000 * 60 * 60 * 24));
+        const periodNumber = Math.floor(daysSinceStart / 14);
+        const start = new Date(payPeriodStart);
+        start.setDate(payPeriodStart.getDate() + (periodNumber * 14));
+        const end = new Date(start);
+        end.setDate(start.getDate() + 13);
+        return { start, end };
+      }
+      case 'last-pay-period': {
+        const payPeriodStart = new Date(2025, 0, 1);
+        const daysSinceStart = Math.floor((today.getTime() - payPeriodStart.getTime()) / (1000 * 60 * 60 * 24));
+        const periodNumber = Math.floor(daysSinceStart / 14) - 1;
+        const start = new Date(payPeriodStart);
+        start.setDate(payPeriodStart.getDate() + (periodNumber * 14));
+        const end = new Date(start);
+        end.setDate(start.getDate() + 13);
+        return { start, end };
+      }
+      default:
+        return null;
+    }
+  };
+
+  // Filter budgets by date
+  const filteredBudgets = budgets.filter(b => {
+    if (dateFilter === 'all') return true;
+    const range = getDateRange(dateFilter);
+    if (!range) return true;
+    const eventDate = new Date(b.event?.eventDate || '');
+    return eventDate >= range.start && eventDate <= range.end;
+  });
 
   useEffect(() => {
     loadData();
@@ -72,13 +140,17 @@ export default function FinancialPage() {
     // }
   }
 
-  // Calculate totals
-  const totalProjectedRevenue = budgets.reduce((sum, b) => sum + (b.projectedRevenue || 0), 0);
-  const totalActualRevenue = budgets.reduce((sum, b) => sum + (b.actualRevenue || 0), 0);
-  const totalProjectedExpenses = budgets.reduce((sum, b) => sum + (b.projectedExpenses || 0), 0);
-  const totalActualExpenses = budgets.reduce((sum, b) => sum + (b.actualExpenses || 0), 0);
+  // Calculate totals from filtered budgets
+  const totalProjectedRevenue = filteredBudgets.reduce((sum, b) => sum + (b.projectedRevenue || 0), 0);
+  const totalActualRevenue = filteredBudgets.reduce((sum, b) => sum + (b.actualRevenue || 0), 0);
+  const totalProjectedExpenses = filteredBudgets.reduce((sum, b) => sum + (b.projectedExpenses || 0), 0);
+  const totalActualExpenses = filteredBudgets.reduce((sum, b) => sum + (b.actualExpenses || 0), 0);
   const totalVariance = totalActualRevenue - totalProjectedRevenue;
   const unattributedExpenses = expenses.filter(e => e.status === 'unattributed').length;
+
+  // Get current filter date range for display
+  const currentRange = getDateRange(dateFilter);
+  const formatDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
   return (
     <div className="p-8">
@@ -165,14 +237,46 @@ export default function FinancialPage() {
         </TabsList>
 
         <TabsContent value="budget">
+          {/* Date Filter Buttons */}
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <span className="text-sm text-gray-500 mr-2">Filter by:</span>
+            {[
+              { value: 'all', label: 'All Time' },
+              { value: 'this-week', label: 'This Week' },
+              { value: 'last-week', label: 'Last Week' },
+              { value: 'this-month', label: 'This Month' },
+              { value: 'last-month', label: 'Last Month' },
+              { value: 'this-pay-period', label: 'This Pay Period' },
+              { value: 'last-pay-period', label: 'Last Pay Period' },
+            ].map(({ value, label }) => (
+              <Button
+                key={value}
+                variant={dateFilter === value ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setDateFilter(value as typeof dateFilter)}
+              >
+                {label}
+              </Button>
+            ))}
+            {currentRange && (
+              <span className="ml-4 text-sm text-gray-600">
+                {formatDate(currentRange.start)} - {formatDate(currentRange.end)}
+              </span>
+            )}
+          </div>
+
           <Card>
             {loading ? (
               <div className="p-8 text-center text-gray-500">Loading budget data...</div>
-            ) : budgets.length === 0 ? (
+            ) : filteredBudgets.length === 0 ? (
               <div className="p-8 text-center">
                 <DollarSign className="mx-auto h-12 w-12 text-gray-300" />
                 <h3 className="mt-4 text-lg font-medium text-gray-900">No budget data</h3>
-                <p className="mt-1 text-gray-500">Budget data will appear once events have financial projections.</p>
+                <p className="mt-1 text-gray-500">
+                  {budgets.length > 0 
+                    ? 'No events match the selected date filter.' 
+                    : 'Budget data will appear once events have financial projections.'}
+                </p>
               </div>
             ) : (
               <Table>
@@ -188,7 +292,7 @@ export default function FinancialPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {budgets.map((budget) => {
+                  {filteredBudgets.map((budget) => {
                     const variance = (budget.actualProfit || 0) - (budget.projectedProfit || 0);
                     const variancePercent = budget.projectedProfit 
                       ? ((variance / budget.projectedProfit) * 100).toFixed(1)
