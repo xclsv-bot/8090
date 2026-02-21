@@ -483,9 +483,45 @@ export const payrollApi = {
 // ============================================
 export const financialApi = {
   // Budgets
-  getBudgetReport: (eventId?: string) => {
+  getBudgetReport: async (eventId?: string): Promise<ApiResponse<EventBudget[]>> => {
     const query = eventId ? `?eventId=${eventId}` : '';
-    return fetchApi<EventBudget[]>(`/api/v1/financial/budgets${query}`);
+    // Use the budget-actuals-report endpoint which has the actual data
+    const response = await fetchApi<{ events: Array<{
+      id: string;
+      title: string;
+      event_date: string;
+      status: string;
+      event_type: string;
+      budget_total: string | null;
+      projected_signups: number | null;
+      projected_revenue: string | null;
+      projected_profit: string | null;
+      actual_total: string | null;
+      actual_signups: number | null;
+      actual_revenue: string | null;
+      actual_profit: string | null;
+    }> }>(`/api/v1/financial/budget-actuals-report${query}`);
+    
+    // Transform to EventBudget format
+    const data = response.data?.events?.map(e => ({
+      id: e.id,
+      eventId: e.id,
+      event: { id: e.id, title: e.title, eventDate: e.event_date, status: e.status, eventType: e.event_type } as unknown as Event,
+      projectedSignups: e.projected_signups || 0,
+      projectedRevenue: parseFloat(e.projected_revenue || '0'),
+      projectedExpenses: parseFloat(e.budget_total || '0'),
+      projectedProfit: parseFloat(e.projected_profit || '0'),
+      actualSignups: e.actual_signups || 0,
+      actualRevenue: parseFloat(e.actual_revenue || '0'),
+      actualExpenses: parseFloat(e.actual_total || '0'),
+      actualProfit: parseFloat(e.actual_profit || '0'),
+      varianceRevenue: (parseFloat(e.actual_revenue || '0') - parseFloat(e.projected_revenue || '0')),
+      varianceExpenses: (parseFloat(e.actual_total || '0') - parseFloat(e.budget_total || '0')),
+      varianceProfit: (parseFloat(e.actual_profit || '0') - parseFloat(e.projected_profit || '0')),
+      isFinalized: e.actual_signups !== null,
+    })) || [];
+    
+    return { ...response, data };
   },
   setBudget: (data: { eventId?: string; category: string; budgetedAmount: number; periodStart?: string; periodEnd?: string }) =>
     fetchApi<EventBudget>('/api/v1/financial/budgets', { method: 'POST', body: JSON.stringify(data) }),
