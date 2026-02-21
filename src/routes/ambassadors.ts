@@ -6,6 +6,7 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { ambassadorService } from '../services/ambassadorService.js';
+import { db } from '../services/database.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import { validateBody, validateQuery, validateParams, commonSchemas } from '../middleware/validate.js';
 
