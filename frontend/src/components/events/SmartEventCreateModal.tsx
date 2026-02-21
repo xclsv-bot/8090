@@ -195,8 +195,7 @@ export function SmartEventCreateModal({ open, onOpenChange, onCreated }: SmartEv
       const res = await eventsApi.create({
         title: form.title,
         venue: form.venue,
-        city: form.region, // Store region in city field for now
-        region: form.region,
+        city: form.region, // Store region in city field
         eventDate: form.eventDate,
         startTime: form.startTime,
         endTime: form.endTime,
