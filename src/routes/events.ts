@@ -162,15 +162,25 @@ export async function eventRoutes(fastify: FastifyInstance): Promise<void> {
   });
 
   /**
-   * DELETE /events/:id - Cancel event
+   * DELETE /events/:id - Delete event (soft or hard)
+   * Query params:
+   *   - hard=true: permanently delete from database
+   *   - reason: cancellation reason (for soft delete)
    */
   fastify.delete('/:id', {
     preHandler: [requireRole('admin'), validateParams(commonSchemas.id)],
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const { reason } = request.query as { reason?: string };
+    const { reason, hard } = request.query as { reason?: string; hard?: string };
 
-    const deleted = await eventService.delete(id, request.user?.id, reason);
+    const isHardDelete = hard === 'true';
+    
+    let deleted: boolean;
+    if (isHardDelete) {
+      deleted = await eventService.hardDelete(id);
+    } else {
+      deleted = await eventService.delete(id, request.user?.id, reason);
+    }
     
     if (!deleted) {
       return reply.status(404).send({
@@ -179,6 +189,6 @@ export async function eventRoutes(fastify: FastifyInstance): Promise<void> {
       });
     }
 
-    return { success: true, data: { cancelled: true } };
+    return { success: true, data: { deleted: isHardDelete, cancelled: !isHardDelete } };
   });
 }

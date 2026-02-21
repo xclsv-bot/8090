@@ -391,6 +391,22 @@ class EventService {
       return false;
     }
   }
+
+  /**
+   * Hard delete event (permanently remove from database)
+   */
+  async hardDelete(id: string): Promise<boolean> {
+    try {
+      const result = await db.query(
+        'DELETE FROM events WHERE id = $1 RETURNING id',
+        [id]
+      );
+      return result.rows.length > 0;
+    } catch (error) {
+      logger.error({ error, eventId: id }, 'Failed to hard delete event');
+      return false;
+    }
+  }
 }
 
 export const eventService = new EventService();
