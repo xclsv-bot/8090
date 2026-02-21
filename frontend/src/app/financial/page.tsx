@@ -43,26 +43,22 @@ export default function FinancialPage() {
   }, []);
 
   async function loadData() {
+    // Load budgets and expenses separately so one failing doesn't break the other
     try {
-      const [budgetsRes, expensesRes] = await Promise.all([
-        financialApi.getBudgetReport(),
-        financialApi.listExpenses(),
-      ]);
+      const budgetsRes = await financialApi.getBudgetReport();
       setBudgets(budgetsRes.data || []);
-      setExpenses(expensesRes.data || []);
-
-      // TODO: Venue performance endpoint not yet implemented in backend
-      // try {
-      //   const venuesRes = await financialApi.getVenuePerformance();
-      //   setVenuePerformance(venuesRes.data || []);
-      // } catch {
-      //   // Endpoint might not exist
-      // }
     } catch (error) {
-      console.error('Failed to load financial data:', error);
-    } finally {
-      setLoading(false);
+      console.error('Failed to load budget data:', error);
     }
+
+    try {
+      const expensesRes = await financialApi.listExpenses();
+      setExpenses(expensesRes.data || []);
+    } catch (error) {
+      console.error('Failed to load expenses data:', error);
+    }
+
+    setLoading(false);
   }
 
   // TODO: attributeExpense endpoint not yet implemented in backend
