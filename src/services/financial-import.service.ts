@@ -6,6 +6,11 @@
 import { pool } from '../config/database.js';
 import { randomUUID } from 'crypto';
 import * as crypto from 'crypto';
+import { 
+  calculateEventPerformanceScore, 
+  EventFinancialData,
+  PerformanceScoreResult 
+} from '../utils/financialScoring.js';
 
 // CSV Column indices (0-based) - based on actual CSV structure
 const COL = {
@@ -255,6 +260,55 @@ async function findOrCreateEvent(
 }
 
 /**
+ * Calculate and store performance score for an event
+ */
+async function calculateAndStorePerformanceScore(
+  eventId: string,
+  budget: ParsedRow | undefined,
+  actual: ParsedRow
+): Promise<PerformanceScoreResult | null> {
+  try {
+    // Prepare financial data for scoring
+    const financialData: EventFinancialData = {
+      projectedSignups: budget?.signups,
+      projectedRevenue: budget?.revenue,
+      projectedProfit: budget?.profit,
+      projectedMarginPercent: budget?.marginPercent ?? undefined,
+      actualSignups: actual.signups,
+      actualRevenue: actual.revenue,
+      actualProfit: actual.profit,
+      actualMarginPercent: actual.marginPercent ?? undefined,
+      actualCost: actual.totalCost,
+      eventDurationHours: 4, // Default to 4 hours if not available
+    };
+    
+    // Calculate performance score
+    const scoreResult = calculateEventPerformanceScore(financialData);
+    
+    // Store performance score on event_actuals table
+    await pool.query(`
+      UPDATE event_actuals SET
+        performance_score = $2,
+        performance_tier = $3,
+        performance_breakdown = $4,
+        performance_calculated_at = NOW()
+      WHERE event_id = $1
+    `, [
+      eventId,
+      scoreResult.performanceScore,
+      scoreResult.tier,
+      JSON.stringify(scoreResult.breakdown)
+    ]);
+    
+    return scoreResult;
+  } catch (err) {
+    // Don't fail the import if scoring fails, just log warning
+    console.warn(`Failed to calculate performance score for event ${eventId}:`, err);
+    return null;
+  }
+}
+
+/**
  * Import budget/actuals CSV file
  */
 export async function importBudgetActuals(
@@ -485,6 +539,9 @@ export async function importBudgetActuals(
             'success', existingActuals.rows.length > 0 ? 'updated_actuals' : 'created_actuals',
             eventId, JSON.stringify(a.rawData)
           ]);
+          
+          // Calculate and store performance score for this event
+          await calculateAndStorePerformanceScore(eventId, group.budget, a);
         }
         
       } catch (err: any) {
@@ -631,4 +688,133 @@ export async function listImports(options: { limit?: number; importType?: string
   
   const result = await pool.query(query, params);
   return result.rows;
+}
+
+/**
+ * Recalculate performance scores for all events with actuals data
+ */
+export async function recalculateAllPerformanceScores(): Promise<{
+  processed: number;
+  updated: number;
+  errors: number;
+}> {
+  const result = {
+    processed: 0,
+    updated: 0,
+    errors: 0,
+  };
+  
+  // Get all events with actuals
+  const eventsResult = await pool.query(`
+    SELECT 
+      e.id as event_id,
+      eb.projected_signups,
+      eb.projected_revenue,
+      eb.projected_profit,
+      eb.projected_margin_percent,
+      ea.actual_signups,
+      ea.actual_revenue,
+      ea.actual_profit,
+      ea.actual_margin_percent,
+      ea.actual_total as actual_cost
+    FROM events e
+    JOIN event_actuals ea ON ea.event_id = e.id
+    LEFT JOIN event_budgets eb ON eb.event_id = e.id
+  `);
+  
+  for (const row of eventsResult.rows) {
+    result.processed++;
+    
+    try {
+      const financialData: EventFinancialData = {
+        projectedSignups: row.projected_signups ? parseInt(row.projected_signups) : undefined,
+        projectedRevenue: row.projected_revenue ? parseFloat(row.projected_revenue) : undefined,
+        projectedProfit: row.projected_profit ? parseFloat(row.projected_profit) : undefined,
+        projectedMarginPercent: row.projected_margin_percent ? parseFloat(row.projected_margin_percent) : undefined,
+        actualSignups: row.actual_signups ? parseInt(row.actual_signups) : undefined,
+        actualRevenue: row.actual_revenue ? parseFloat(row.actual_revenue) : undefined,
+        actualProfit: row.actual_profit ? parseFloat(row.actual_profit) : undefined,
+        actualMarginPercent: row.actual_margin_percent ? parseFloat(row.actual_margin_percent) : undefined,
+        actualCost: row.actual_cost ? parseFloat(row.actual_cost) : undefined,
+        eventDurationHours: 4, // Default
+      };
+      
+      const scoreResult = calculateEventPerformanceScore(financialData);
+      
+      await pool.query(`
+        UPDATE event_actuals SET
+          performance_score = $2,
+          performance_tier = $3,
+          performance_breakdown = $4,
+          performance_calculated_at = NOW()
+        WHERE event_id = $1
+      `, [
+        row.event_id,
+        scoreResult.performanceScore,
+        scoreResult.tier,
+        JSON.stringify(scoreResult.breakdown)
+      ]);
+      
+      result.updated++;
+    } catch (err) {
+      console.error(`Failed to recalculate score for event ${row.event_id}:`, err);
+      result.errors++;
+    }
+  }
+  
+  return result;
+}
+
+/**
+ * Get performance score for a specific event
+ */
+export async function getEventPerformanceScore(eventId: string): Promise<PerformanceScoreResult | null> {
+  const result = await pool.query(`
+    SELECT 
+      ea.performance_score,
+      ea.performance_tier,
+      ea.performance_breakdown,
+      ea.performance_calculated_at,
+      ea.actual_signups,
+      ea.actual_revenue,
+      ea.actual_profit,
+      ea.actual_margin_percent,
+      eb.projected_signups
+    FROM event_actuals ea
+    LEFT JOIN event_budgets eb ON eb.event_id = ea.event_id
+    WHERE ea.event_id = $1
+  `, [eventId]);
+  
+  if (result.rows.length === 0) {
+    return null;
+  }
+  
+  const row = result.rows[0];
+  
+  // If no score calculated yet, calculate it now
+  if (row.performance_score === null) {
+    const financialData: EventFinancialData = {
+      projectedSignups: row.projected_signups ? parseInt(row.projected_signups) : undefined,
+      actualSignups: row.actual_signups ? parseInt(row.actual_signups) : undefined,
+      actualRevenue: row.actual_revenue ? parseFloat(row.actual_revenue) : undefined,
+      actualProfit: row.actual_profit ? parseFloat(row.actual_profit) : undefined,
+      actualMarginPercent: row.actual_margin_percent ? parseFloat(row.actual_margin_percent) : undefined,
+      eventDurationHours: 4,
+    };
+    
+    return calculateEventPerformanceScore(financialData);
+  }
+  
+  return {
+    performanceScore: row.performance_score,
+    tier: row.performance_tier,
+    breakdown: row.performance_breakdown,
+    metrics: {
+      actualMarginPercent: row.actual_margin_percent ? parseFloat(row.actual_margin_percent) : null,
+      signupsPerHour: row.actual_signups ? row.actual_signups / 4 : null, // Assuming 4hr events
+      goalAchievementPercent: row.projected_signups && row.actual_signups 
+        ? (row.actual_signups / row.projected_signups) * 100 
+        : null,
+    },
+  };
 }

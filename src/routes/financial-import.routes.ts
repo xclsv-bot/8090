@@ -8,8 +8,11 @@ import {
   importBudgetActuals, 
   getImportStatus, 
   getImportRowDetails,
-  listImports 
+  listImports,
+  recalculateAllPerformanceScores,
+  getEventPerformanceScore
 } from '../services/financial-import.service.js';
+import { getScoringConfiguration } from '../utils/financialScoring.js';
 import { pool } from '../config/database.js';
 
 interface RowAccumulator {
@@ -361,6 +364,136 @@ export async function financialImportRoutes(fastify: FastifyInstance) {
       events: result.rows,
       totals,
       count: result.rows.length
+    };
+  });
+
+  /**
+   * GET /api/v1/events/:eventId/performance-score
+   * Get performance score for a specific event
+   */
+  fastify.get('/events/:eventId/performance-score', {
+    schema: {
+      description: 'Get performance score for an event',
+      tags: ['Financial Import'],
+      params: {
+        type: 'object',
+        properties: {
+          eventId: { type: 'string', format: 'uuid' }
+        },
+        required: ['eventId']
+      }
+    }
+  }, async (request, reply) => {
+    const { eventId } = request.params as { eventId: string };
+    
+    const score = await getEventPerformanceScore(eventId);
+    
+    if (!score) {
+      return reply.code(404).send({ error: 'No actuals data found for this event' });
+    }
+    
+    return score;
+  });
+
+  /**
+   * POST /api/v1/imports/financial/recalculate-scores
+   * Recalculate performance scores for all events with actuals
+   */
+  fastify.post('/imports/financial/recalculate-scores', {
+    schema: {
+      description: 'Recalculate performance scores for all events',
+      tags: ['Financial Import']
+    }
+  }, async () => {
+    const result = await recalculateAllPerformanceScores();
+    
+    return {
+      success: true,
+      message: `Recalculated performance scores for ${result.updated} events`,
+      ...result
+    };
+  });
+
+  /**
+   * GET /api/v1/financial/scoring-config
+   * Get the scoring configuration and weights
+   */
+  fastify.get('/financial/scoring-config', {
+    schema: {
+      description: 'Get performance scoring configuration',
+      tags: ['Financial Import']
+    }
+  }, async () => {
+    return getScoringConfiguration();
+  });
+
+  /**
+   * GET /api/v1/financial/top-performers
+   * Get top and bottom performing events
+   */
+  fastify.get('/financial/top-performers', {
+    schema: {
+      description: 'Get top and bottom performing events',
+      tags: ['Financial Import'],
+      querystring: {
+        type: 'object',
+        properties: {
+          limit: { type: 'number', default: 10 },
+          tier: { type: 'string', enum: ['excellent', 'good', 'average', 'below_average', 'poor'] },
+          fromDate: { type: 'string', format: 'date' },
+          toDate: { type: 'string', format: 'date' }
+        }
+      }
+    }
+  }, async (request) => {
+    const { limit, tier, fromDate, toDate } = request.query as {
+      limit?: number;
+      tier?: string;
+      fromDate?: string;
+      toDate?: string;
+    };
+    
+    let query = `
+      SELECT 
+        e.id, e.title, e.event_date, e.event_type,
+        ea.performance_score, ea.performance_tier, ea.performance_breakdown,
+        ea.actual_signups, ea.actual_revenue, ea.actual_profit, ea.actual_margin_percent
+      FROM events e
+      JOIN event_actuals ea ON ea.event_id = e.id
+      WHERE ea.performance_score IS NOT NULL
+    `;
+    
+    const params: (string | number)[] = [];
+    
+    if (tier) {
+      params.push(tier);
+      query += ` AND ea.performance_tier = $${params.length}`;
+    }
+    
+    if (fromDate) {
+      params.push(fromDate);
+      query += ` AND e.event_date >= $${params.length}`;
+    }
+    
+    if (toDate) {
+      params.push(toDate);
+      query += ` AND e.event_date <= $${params.length}`;
+    }
+    
+    query += ` ORDER BY ea.performance_score DESC`;
+    
+    params.push(limit || 10);
+    query += ` LIMIT $${params.length}`;
+    
+    const topResult = await pool.query(query, params);
+    
+    // Also get bottom performers
+    const bottomQuery = query.replace('DESC', 'ASC');
+    const bottomResult = await pool.query(bottomQuery, params);
+    
+    return {
+      topPerformers: topResult.rows,
+      bottomPerformers: bottomResult.rows
     };
   });
 }

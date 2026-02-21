@@ -23,6 +23,7 @@ import { dashboardRoutes } from './dashboard.js';
 import { leaderboardRoutes } from './leaderboard.js';
 import { adminRoutes } from './admin.js';
 import { importRoutes } from './admin/imports/index.js';
+import { adminChatRoutes } from './admin/chat.js';
 import { alertingRoutes } from './alerting.js';
 import { exportRoutes } from './exports.js';
 import { supportHubRoutes } from './support-hub/index.js';
@@ -62,6 +63,7 @@ export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
   await fastify.register(leaderboardRoutes, { prefix: '/api/v1/leaderboard' });
   await fastify.register(adminRoutes, { prefix: '/api/v1/admin' });
   await fastify.register(importRoutes, { prefix: '/api/v1/admin/imports' });
+  await fastify.register(adminChatRoutes, { prefix: '/api/v1/admin/chats' });
   await fastify.register(alertingRoutes, { prefix: '/api/v1/alerting' });
   await fastify.register(exportRoutes, { prefix: '/api/v1/exports' });
   await fastify.register(supportHubRoutes, { prefix: '/api/v1/support-hub' });
