@@ -215,7 +215,9 @@ export function AmbassadorAssignmentSection({ eventId }: AmbassadorAssignmentSec
                           <div className="flex items-center gap-2">
                             <p className="font-medium text-sm">{getAmbassadorName(suggestion.ambassador)}</p>
                             {suggestion.hasConflict && (
-                              <AlertTriangle className="h-4 w-4 text-yellow-500" title={suggestion.conflictDetails} />
+                              <span title={suggestion.conflictDetails}>
+                                <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                              </span>
                             )}
                           </div>
                           <div className="flex items-center gap-2 mt-1">
