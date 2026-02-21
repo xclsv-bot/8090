@@ -16,3 +16,6 @@ export { EventBudgetSection } from './EventBudgetSection';
 
 // Ambassador Assignment (WO-95)
 export { AmbassadorAssignmentSection } from './AmbassadorAssignmentSection';
+
+// Smart Event Creation (WO-94)
+export { SmartEventCreateModal } from './SmartEventCreateModal';
