@@ -19,6 +19,7 @@ import type {
   BonusThreshold,
   PayrollAdjustment,
   EventBudget,
+  EventBudgetData,
   Expense,
   ExpenseReconciliationItem,
   VenuePerformance,
