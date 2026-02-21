@@ -486,7 +486,13 @@ export const financialApi = {
   getBudgetReport: async (eventId?: string): Promise<ApiResponse<EventBudget[]>> => {
     const query = eventId ? `?eventId=${eventId}` : '';
     // Use the budget-actuals-report endpoint which has the actual data
-    const response = await fetchApi<{ events: Array<{
+    // Note: This endpoint returns { events: [...] } directly, not { data: { events: [...] } }
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://xclsv-core-platform.onrender.com'}/api/v1/financial/budget-actuals-report${query}`);
+    const json = await res.json();
+    
+    // Transform to EventBudget format - events is at top level, not nested in data
+    const events = json.events || [];
+    const data: EventBudget[] = events.map((e: {
       id: string;
       title: string;
       event_date: string;
@@ -500,10 +506,7 @@ export const financialApi = {
       actual_signups: number | null;
       actual_revenue: string | null;
       actual_profit: string | null;
-    }> }>(`/api/v1/financial/budget-actuals-report${query}`);
-    
-    // Transform to EventBudget format
-    const data = response.data?.events?.map(e => ({
+    }) => ({
       id: e.id,
       eventId: e.id,
       event: { id: e.id, title: e.title, eventDate: e.event_date, status: e.status, eventType: e.event_type } as unknown as Event,
@@ -519,9 +522,9 @@ export const financialApi = {
       varianceExpenses: (parseFloat(e.actual_total || '0') - parseFloat(e.budget_total || '0')),
       varianceProfit: (parseFloat(e.actual_profit || '0') - parseFloat(e.projected_profit || '0')),
       isFinalized: e.actual_signups !== null,
-    })) || [];
+    }));
     
-    return { ...response, data };
+    return { success: true, data };
   },
   setBudget: (data: { eventId?: string; category: string; budgetedAmount: number; periodStart?: string; periodEnd?: string }) =>
     fetchApi<EventBudget>('/api/v1/financial/budgets', { method: 'POST', body: JSON.stringify(data) }),
