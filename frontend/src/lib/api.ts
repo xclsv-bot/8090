@@ -82,16 +82,8 @@ async function fetchApi<T>(
   endpoint: string,
   options?: RequestInit & { token?: string }
 ): Promise<ApiResponse<T>> {
-  // Transform body to snake_case if present
-  let body = options?.body;
-  if (body && typeof body === 'string') {
-    try {
-      const parsed = JSON.parse(body);
-      body = JSON.stringify(transformKeysToSnake(parsed));
-    } catch {
-      // Not JSON, leave as-is
-    }
-  }
+  // Keep body as-is - backend expects camelCase input
+  const body = options?.body;
 
   // Use provided token, stored token, or none
   const token = options?.token || authToken;
