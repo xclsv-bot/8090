@@ -66,6 +66,30 @@ interface SportsGame {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://xclsv-core-platform.onrender.com';
 
+// Available regions for events
+const REGIONS = [
+  'Arizona',
+  'Charlotte',
+  'Detroit',
+  'Kansas City',
+  'New Jersey',
+  'New Orleans',
+  'Philly',
+  'St Louis',
+  'Cleveland',
+  'Houston',
+  'Dallas',
+  'Atlanta',
+  'Chicago',
+  'Boston',
+  'Miami',
+  'Denver',
+  'Las Vegas',
+  'Los Angeles',
+  'San Francisco',
+  'Seattle',
+];
+
 export function SmartEventCreateModal({ open, onOpenChange, onCreated }: SmartEventCreateModalProps) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
@@ -77,8 +101,7 @@ export function SmartEventCreateModal({ open, onOpenChange, onCreated }: SmartEv
   const [form, setForm] = useState({
     title: '',
     venue: '',
-    city: '',
-    state: '',
+    region: '',
     eventDate: '',
     startTime: '17:00',
     endTime: '22:00',
@@ -94,8 +117,8 @@ export function SmartEventCreateModal({ open, onOpenChange, onCreated }: SmartEv
 
   // Filter suggestions when form changes
   useEffect(() => {
-    // Could add real-time filtering here based on form.city, form.state, form.eventDate
-  }, [form.city, form.state, form.eventDate]);
+    // Could add real-time filtering here based on form.region, form.eventDate
+  }, [form.region, form.eventDate]);
 
   async function loadSuggestions() {
     setLoadingSuggestions(true);
@@ -139,8 +162,7 @@ export function SmartEventCreateModal({ open, onOpenChange, onCreated }: SmartEv
     setForm(prev => ({
       ...prev,
       title: `${game.homeTeam} vs ${game.awayTeam} Watch Party`,
-      city: game.city || prev.city,
-      state: game.state || prev.state,
+      region: game.city || prev.region,
       eventDate: gameDate,
       startTime: game.gameTime ? game.gameTime.substring(0, 5) : '17:00',
     }));
@@ -151,8 +173,7 @@ export function SmartEventCreateModal({ open, onOpenChange, onCreated }: SmartEv
     setForm({
       title: suggestion.title,
       venue: suggestion.venue,
-      city: suggestion.city,
-      state: suggestion.state,
+      region: suggestion.city || suggestion.state || '',
       eventDate: suggestionDate,
       startTime: suggestion.startTime || '17:00',
       endTime: suggestion.endTime || '22:00',
@@ -164,8 +185,8 @@ export function SmartEventCreateModal({ open, onOpenChange, onCreated }: SmartEv
     e.preventDefault();
     
     // Validate required fields
-    if (!form.title || !form.venue || !form.eventDate || !form.city || !form.state) {
-      alert('Please fill in all required fields: Title, Venue, Date, City, State');
+    if (!form.title || !form.venue || !form.eventDate || !form.region) {
+      alert('Please fill in all required fields: Title, Venue, Date, Region');
       return;
     }
 
@@ -174,8 +195,8 @@ export function SmartEventCreateModal({ open, onOpenChange, onCreated }: SmartEv
       const res = await eventsApi.create({
         title: form.title,
         venue: form.venue,
-        city: form.city,
-        state: form.state,
+        city: form.region, // Store region in city field for now
+        region: form.region,
         eventDate: form.eventDate,
         startTime: form.startTime,
         endTime: form.endTime,
@@ -203,15 +224,17 @@ export function SmartEventCreateModal({ open, onOpenChange, onCreated }: SmartEv
     return 'bg-red-100 text-red-700';
   };
 
-  // Filter games by region if user has entered city/state
+  // Filter games by region if user has selected one
   const filteredGames = upcomingGames.filter(game => {
-    if (!form.state) return true;
-    return game.state?.toLowerCase() === form.state.toLowerCase();
+    if (!form.region) return true;
+    const region = form.region.toLowerCase();
+    return game.city?.toLowerCase().includes(region) || 
+           game.state?.toLowerCase().includes(region);
   });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-yellow-500" />
@@ -243,26 +266,19 @@ export function SmartEventCreateModal({ open, onOpenChange, onCreated }: SmartEv
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-medium">City *</label>
-                  <Input
-                    value={form.city}
-                    onChange={(e) => setForm(prev => ({ ...prev, city: e.target.value }))}
-                    placeholder="Phoenix"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">State *</label>
-                  <Input
-                    value={form.state}
-                    onChange={(e) => setForm(prev => ({ ...prev, state: e.target.value }))}
-                    placeholder="AZ"
-                    maxLength={2}
-                    required
-                  />
-                </div>
+              <div>
+                <label className="text-sm font-medium">Region *</label>
+                <select
+                  className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
+                  value={form.region}
+                  onChange={(e) => setForm(prev => ({ ...prev, region: e.target.value }))}
+                  required
+                >
+                  <option value="">Select a region...</option>
+                  {REGIONS.sort().map(region => (
+                    <option key={region} value={region}>{region}</option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -370,7 +386,7 @@ export function SmartEventCreateModal({ open, onOpenChange, onCreated }: SmartEv
                   <>
                     <p className="text-xs text-gray-500 mt-4 flex items-center gap-1">
                       <Trophy className="h-3 w-3" />
-                      Upcoming games {form.state && `in ${form.state}`}
+                      Upcoming games {form.region && `in ${form.region}`}
                     </p>
                     {filteredGames.slice(0, 5).map((game) => (
                       <Card
@@ -416,7 +432,7 @@ export function SmartEventCreateModal({ open, onOpenChange, onCreated }: SmartEv
                   <div className="text-center py-8 text-gray-400">
                     <Zap className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     <p className="text-sm">No suggestions available</p>
-                    <p className="text-xs mt-1">Enter a state to see relevant games</p>
+                    <p className="text-xs mt-1">Select a region to see relevant games</p>
                   </div>
                 )}
               </div>
