@@ -196,6 +196,14 @@ export const eventsApi = {
     }).toString();
     return fetchApi<BulkDuplicatePreview>(`/api/v1/events/${id}/duplicate/preview?${query}`);
   },
+  
+  // WO-96: Event Budget
+  getBudget: (eventId: string) => fetchApi<EventBudgetData>(`/api/v1/events/${eventId}/budget`),
+  updateBudget: (eventId: string, data: Partial<EventBudgetData>) =>
+    fetchApi<EventBudgetData>(`/api/v1/events/${eventId}/budget`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
 };
 
 // ============================================

@@ -335,6 +335,29 @@ export interface PayrollAdjustment {
 // ============================================
 // FINANCIAL
 // ============================================
+
+// WO-96: Budget data from event detail page
+export interface EventBudgetData {
+  id?: string;
+  eventId?: string;
+  budgetStaff?: number;
+  budgetReimbursements?: number;
+  budgetRewards?: number;
+  budgetBase?: number;
+  budgetBonusKickback?: number;
+  budgetParking?: number;
+  budgetSetup?: number;
+  budgetAdditional1?: number;
+  budgetAdditional2?: number;
+  budgetAdditional3?: number;
+  budgetAdditional4?: number;
+  budgetTotal?: number;
+  projectedSignups?: number;
+  projectedRevenue?: number;
+  projectedProfit?: number;
+  notes?: string;
+}
+
 export interface EventBudget {
   id: string;
   eventId: string;

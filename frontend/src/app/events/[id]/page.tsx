@@ -16,7 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ArrowLeft, Calendar, MapPin, Users, Copy, CalendarRange } from 'lucide-react';
-import { EventDuplicateModal, BulkDuplicateModal } from '@/components/events';
+import { EventDuplicateModal, BulkDuplicateModal, EventBudgetSection } from '@/components/events';
 
 const statusColors: Record<string, string> = {
   planned: 'bg-gray-100 text-gray-700',
@@ -219,6 +219,9 @@ export default function EventDetailPage() {
               </div>
             </div>
           </Card>
+
+          {/* Budget Section (WO-96) */}
+          <EventBudgetSection eventId={event.id} eventStatus={event.status} />
 
           <Card className="p-6">
             <h3 className="font-semibold mb-4">Actions</h3>

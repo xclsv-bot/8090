@@ -192,3 +192,122 @@ export async function eventRoutes(fastify: FastifyInstance): Promise<void> {
     return { success: true, data: { deleted: isHardDelete, cancelled: !isHardDelete } };
   });
 }
+
+// ============================================
+// EVENT BUDGET ENDPOINTS (WO-96)
+// ============================================
+
+/**
+ * GET /events/:id/budget - Get event budget
+ */
+fastify.get('/:id/budget', {
+  preHandler: [requireRole('admin', 'manager')],
+}, async (request) => {
+  const { id } = request.params as { id: string };
+  
+  const budget = await db.queryOne<{
+    id: string;
+    event_id: string;
+    budget_staff: string | null;
+    budget_reimbursements: string | null;
+    budget_rewards: string | null;
+    budget_base: string | null;
+    budget_bonus_kickback: string | null;
+    budget_parking: string | null;
+    budget_setup: string | null;
+    budget_additional_1: string | null;
+    budget_additional_2: string | null;
+    budget_additional_3: string | null;
+    budget_additional_4: string | null;
+    budget_total: string | null;
+    projected_signups: number | null;
+    projected_revenue: string | null;
+    projected_profit: string | null;
+    notes: string | null;
+  }>('SELECT * FROM event_budgets WHERE event_id = $1', [id]);
+  
+  return { success: true, data: budget };
+});
+
+/**
+ * PUT /events/:id/budget - Create or update event budget
+ */
+fastify.put('/:id/budget', {
+  preHandler: [requireRole('admin', 'manager')],
+}, async (request) => {
+  const { id } = request.params as { id: string };
+  const body = request.body as {
+    budgetStaff?: number;
+    budgetReimbursements?: number;
+    budgetRewards?: number;
+    budgetBase?: number;
+    budgetBonusKickback?: number;
+    budgetParking?: number;
+    budgetSetup?: number;
+    budgetAdditional1?: number;
+    budgetAdditional2?: number;
+    budgetAdditional3?: number;
+    budgetAdditional4?: number;
+    projectedSignups?: number;
+    projectedRevenue?: number;
+    notes?: string;
+  };
+  
+  // Calculate totals
+  const budgetTotal = (body.budgetStaff || 0) + (body.budgetReimbursements || 0) + 
+    (body.budgetRewards || 0) + (body.budgetBase || 0) + (body.budgetBonusKickback || 0) +
+    (body.budgetParking || 0) + (body.budgetSetup || 0) + (body.budgetAdditional1 || 0) +
+    (body.budgetAdditional2 || 0) + (body.budgetAdditional3 || 0) + (body.budgetAdditional4 || 0);
+  
+  const projectedProfit = (body.projectedRevenue || 0) - budgetTotal;
+  
+  // Check if budget exists
+  const existing = await db.queryOne<{ id: string }>('SELECT id FROM event_budgets WHERE event_id = $1', [id]);
+  
+  if (existing) {
+    // Update
+    await db.query(`
+      UPDATE event_budgets SET
+        budget_staff = $2,
+        budget_reimbursements = $3,
+        budget_rewards = $4,
+        budget_base = $5,
+        budget_bonus_kickback = $6,
+        budget_parking = $7,
+        budget_setup = $8,
+        budget_additional_1 = $9,
+        budget_additional_2 = $10,
+        budget_additional_3 = $11,
+        budget_additional_4 = $12,
+        budget_total = $13,
+        projected_signups = $14,
+        projected_revenue = $15,
+        projected_profit = $16,
+        notes = $17,
+        updated_at = NOW()
+      WHERE event_id = $1
+    `, [id, body.budgetStaff, body.budgetReimbursements, body.budgetRewards, body.budgetBase,
+        body.budgetBonusKickback, body.budgetParking, body.budgetSetup, body.budgetAdditional1,
+        body.budgetAdditional2, body.budgetAdditional3, body.budgetAdditional4, budgetTotal,
+        body.projectedSignups, body.projectedRevenue, projectedProfit, body.notes]);
+  } else {
+    // Insert
+    await db.query(`
+      INSERT INTO event_budgets (
+        id, event_id, budget_staff, budget_reimbursements, budget_rewards, budget_base,
+        budget_bonus_kickback, budget_parking, budget_setup, budget_additional_1,
+        budget_additional_2, budget_additional_3, budget_additional_4, budget_total,
+        projected_signups, projected_revenue, projected_profit, notes, created_at, updated_at
+      ) VALUES (
+        gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW(), NOW()
+      )
+    `, [id, body.budgetStaff, body.budgetReimbursements, body.budgetRewards, body.budgetBase,
+        body.budgetBonusKickback, body.budgetParking, body.budgetSetup, body.budgetAdditional1,
+        body.budgetAdditional2, body.budgetAdditional3, body.budgetAdditional4, budgetTotal,
+        body.projectedSignups, body.projectedRevenue, projectedProfit, body.notes]);
+  }
+  
+  // Return updated budget
+  const budget = await db.queryOne('SELECT * FROM event_budgets WHERE event_id = $1', [id]);
+  return { success: true, data: budget };
+});

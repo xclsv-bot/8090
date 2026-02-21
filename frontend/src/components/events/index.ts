@@ -10,3 +10,6 @@ export type { EventFilters } from './EventFilters';
 export { EventCalendar } from './EventCalendar';
 export { EventListView } from './EventListView';
 export { EventDetailModal } from './EventDetailModal';
+
+// Budget (WO-96)
+export { EventBudgetSection } from './EventBudgetSection';
