@@ -261,6 +261,8 @@ export interface SuggestedAmbassador {
 export const assignmentsApi = {
   getByEvent: (eventId: string) => 
     fetchApi<EventAssignment[]>(`/api/v1/assignments/event/${eventId}`),
+  getByAmbassador: (ambassadorId: string, upcoming = true) =>
+    fetchApi<EventAssignment[]>(`/api/v1/assignments/ambassador/${ambassadorId}?upcoming=${upcoming}`),
   create: (data: { eventId: string; ambassadorId: string; role?: string; scheduledStart?: string; scheduledEnd?: string; payRate?: number }) =>
     fetchApi<EventAssignment>('/api/v1/assignments', { method: 'POST', body: JSON.stringify(data) }),
   remove: (assignmentId: string) =>
