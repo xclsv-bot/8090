@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Users, Plus, X, AlertTriangle, Star, Search, Loader2 } from 'lucide-react';
+import Link from 'next/link';
 
 interface AmbassadorAssignmentSectionProps {
   eventId: string;
@@ -162,9 +163,12 @@ export function AmbassadorAssignmentSection({ eventId }: AmbassadorAssignmentSec
             {assignments.map((assignment) => (
               <div key={assignment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div>
-                  <p className="font-medium text-sm">
+                  <Link 
+                    href={`/ambassadors/${assignment.ambassadorId}`}
+                    className="font-medium text-sm hover:text-blue-600 hover:underline"
+                  >
                     {getAssignmentName(assignment)}
-                  </p>
+                  </Link>
                   <div className="flex items-center gap-2 mt-1">
                     <Badge className={statusColors[assignment.status] || 'bg-gray-100'}>
                       {assignment.status}
