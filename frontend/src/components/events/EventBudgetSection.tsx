@@ -44,8 +44,15 @@ export function EventBudgetSection({ eventId, eventStatus }: EventBudgetSectionP
         setBudget(res.data);
       }
       setHasChanges(false);
-    } catch (error) {
+      // Visual feedback
+      const btn = document.querySelector('[data-save-budget]');
+      if (btn) {
+        btn.textContent = '✓ Saved';
+        setTimeout(() => { btn.textContent = 'Save'; }, 2000);
+      }
+    } catch (error: unknown) {
       console.error('Failed to save budget:', error);
+      alert('Failed to save budget: ' + ((error as Error).message || 'Unknown error'));
     } finally {
       setSaving(false);
     }
@@ -83,9 +90,9 @@ export function EventBudgetSection({ eventId, eventStatus }: EventBudgetSectionP
           Budget & Financials
         </h3>
         {hasChanges && (
-          <Button onClick={saveBudget} disabled={saving} size="sm">
+          <Button onClick={saveBudget} disabled={saving} size="sm" data-save-budget>
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-            Save
+            <span>Save</span>
           </Button>
         )}
       </div>

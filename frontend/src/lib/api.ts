@@ -54,6 +54,12 @@ function transformKeys(obj: unknown): unknown {
   return obj;
 }
 
+// Transform budget response from snake_case to camelCase EventBudgetData
+function transformBudgetResponse(data: Record<string, unknown> | null | undefined): EventBudgetData | null {
+  if (!data) return null;
+  return transformKeys(data) as EventBudgetData;
+}
+
 // Recursively transform object keys from camelCase to snake_case (for sending to API)
 function transformKeysToSnake(obj: unknown): unknown {
   if (Array.isArray(obj)) {
@@ -198,13 +204,18 @@ export const eventsApi = {
     return fetchApi<BulkDuplicatePreview>(`/api/v1/events/${id}/duplicate/preview?${query}`);
   },
   
-  // WO-96: Event Budget
-  getBudget: (eventId: string) => fetchApi<EventBudgetData>(`/api/v1/events/${eventId}/budget`),
-  updateBudget: (eventId: string, data: Partial<EventBudgetData>) =>
-    fetchApi<EventBudgetData>(`/api/v1/events/${eventId}/budget`, {
+  // WO-96: Event Budget (transforms snake_case response to camelCase)
+  getBudget: async (eventId: string) => {
+    const res = await fetchApi<Record<string, unknown>>(`/api/v1/events/${eventId}/budget`);
+    return { ...res, data: transformBudgetResponse(res.data) };
+  },
+  updateBudget: async (eventId: string, data: Partial<EventBudgetData>) => {
+    const res = await fetchApi<Record<string, unknown>>(`/api/v1/events/${eventId}/budget`, {
       method: 'PUT',
       body: JSON.stringify(data),
-    }),
+    });
+    return { ...res, data: transformBudgetResponse(res.data) };
+  },
 };
 
 // ============================================
