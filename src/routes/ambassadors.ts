@@ -108,6 +108,47 @@ export async function ambassadorRoutes(fastify: FastifyInstance): Promise<void> 
   });
 
   /**
+   * GET /ambassadors/:id/performance - Get ambassador performance stats
+   */
+  fastify.get('/:id/performance', {
+    preHandler: [validateParams(commonSchemas.id)],
+  }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    
+    // Get signup stats for this ambassador
+    const stats = await db.queryOne<{
+      signups: string;
+      events: string;
+      earnings: string;
+    }>(
+      `SELECT 
+        COUNT(*) as signups,
+        COUNT(DISTINCT event_id) as events,
+        COALESCE(SUM(cpa_applied), 0) as earnings
+       FROM signups 
+       WHERE ambassador_id = $1 
+       AND validation_status = 'validated'`,
+      [id]
+    );
+
+    if (!stats) {
+      return reply.status(404).send({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Ambassador not found' },
+      });
+    }
+
+    return { 
+      success: true, 
+      data: {
+        signups: parseInt(stats.signups) || 0,
+        events: parseInt(stats.events) || 0,
+        earnings: parseFloat(stats.earnings) || 0,
+      }
+    };
+  });
+
+  /**
    * POST /ambassadors - Create new ambassador
    */
   fastify.post('/', {
