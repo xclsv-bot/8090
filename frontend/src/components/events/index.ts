@@ -13,3 +13,6 @@ export { EventDetailModal } from './EventDetailModal';
 
 // Budget (WO-96)
 export { EventBudgetSection } from './EventBudgetSection';
+
+// Ambassador Assignment (WO-95)
+export { AmbassadorAssignmentSection } from './AmbassadorAssignmentSection';

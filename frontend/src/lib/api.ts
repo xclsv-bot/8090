@@ -225,6 +225,50 @@ export const ambassadorsApi = {
 };
 
 // ============================================
+// ASSIGNMENTS API (WO-95)
+// ============================================
+export interface EventAssignment {
+  id: string;
+  eventId: string;
+  ambassadorId: string;
+  ambassador?: Ambassador;
+  role?: string;
+  scheduledStart?: string;
+  scheduledEnd?: string;
+  status: 'pending' | 'confirmed' | 'declined' | 'completed';
+  checkInTime?: string;
+  checkOutTime?: string;
+  hoursWorked?: number;
+  payRate?: number;
+  bonusAmount?: number;
+  totalSignups?: number;
+}
+
+export interface SuggestedAmbassador {
+  ambassador: Ambassador;
+  score: number;
+  reasons: string[];
+  hasConflict: boolean;
+  conflictDetails?: string;
+}
+
+export const assignmentsApi = {
+  getByEvent: (eventId: string) => 
+    fetchApi<EventAssignment[]>(`/api/v1/assignments/event/${eventId}`),
+  create: (data: { eventId: string; ambassadorId: string; role?: string; scheduledStart?: string; scheduledEnd?: string; payRate?: number }) =>
+    fetchApi<EventAssignment>('/api/v1/assignments', { method: 'POST', body: JSON.stringify(data) }),
+  remove: (assignmentId: string) =>
+    fetchApi<void>(`/api/v1/assignments/${assignmentId}`, { method: 'DELETE' }),
+  updateStatus: (assignmentId: string, status: string, reason?: string) =>
+    fetchApi<EventAssignment>(`/api/v1/assignments/${assignmentId}/status`, { 
+      method: 'PATCH', 
+      body: JSON.stringify({ status, declinedReason: reason }) 
+    }),
+  suggest: (eventId: string, limit?: number) =>
+    fetchApi<SuggestedAmbassador[]>(`/api/v1/assignments/suggest/${eventId}${limit ? `?limit=${limit}` : ''}`),
+};
+
+// ============================================
 // OPERATORS API (WO-2)
 // ============================================
 export const operatorsApi = {
