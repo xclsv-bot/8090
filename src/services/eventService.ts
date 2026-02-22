@@ -6,6 +6,7 @@
 import { db } from './database.js';
 import { logger } from '../utils/logger.js';
 import { publishEventUpdated } from '../utils/events.js';
+import { notificationService } from './notificationService.js';
 import type { EventStatus } from '../types/models.js';
 import type { 
   EventExtended, 
@@ -257,6 +258,13 @@ class EventService {
         changes: { status: { old: current.status, new: newStatus } },
         userId: updatedBy,
       });
+
+      // WO-97: Send notifications when event is scheduled (planned -> confirmed)
+      if (current.status === 'planned' && newStatus === 'confirmed') {
+        this.sendScheduledNotifications(id).catch((err) => {
+          logger.error({ eventId: id, error: err }, 'Failed to send scheduled notifications');
+        });
+      }
     }
 
     logger.info({ eventId: id, from: current.status, to: newStatus }, 'Event status updated');
@@ -363,6 +371,36 @@ class EventService {
         [eventId, operatorIds[i], i === 0]
       );
     }
+  }
+
+  /**
+   * WO-97: Send notifications to assigned ambassadors when event is scheduled
+   */
+  private async sendScheduledNotifications(eventId: string): Promise<void> {
+    // Get all assigned ambassadors for this event
+    const assignments = await db.query<{ ambassador_id: string }>(
+      `SELECT ambassador_id FROM event_assignments WHERE event_id = $1`,
+      [eventId]
+    );
+
+    if (assignments.rows.length === 0) {
+      logger.info({ eventId }, 'No ambassadors assigned, skipping notifications');
+      return;
+    }
+
+    logger.info({ eventId, count: assignments.rows.length }, 'Sending scheduled notifications');
+
+    // Send notification to each ambassador (non-blocking)
+    const results = await Promise.allSettled(
+      assignments.rows.map((row) =>
+        notificationService.sendEventScheduledNotification(eventId, row.ambassador_id)
+      )
+    );
+
+    const sent = results.filter((r) => r.status === 'fulfilled' && r.value.success).length;
+    const failed = results.filter((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)).length;
+
+    logger.info({ eventId, sent, failed }, 'Scheduled notifications complete');
   }
 
   /**

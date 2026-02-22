@@ -191,5 +191,56 @@ export async function eventRoutes(fastify: FastifyInstance): Promise<void> {
 
     return { success: true, data: { deleted: isHardDelete, cancelled: !isHardDelete } };
   });
+
+  /**
+   * GET /events/:id/notifications - Get notification history for event
+   * WO-97: Admin can see notification history
+   */
+  fastify.get('/:id/notifications', {
+    preHandler: [requireRole('admin', 'manager'), validateParams(commonSchemas.id)],
+    schema: {
+      description: 'Get notification history for an event',
+      tags: ['Events'],
+      params: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+        },
+        required: ['id'],
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  ambassadorId: { type: 'string' },
+                  notificationType: { type: 'string' },
+                  channel: { type: 'string' },
+                  recipientEmail: { type: 'string' },
+                  subject: { type: 'string' },
+                  status: { type: 'string' },
+                  attempts: { type: 'number' },
+                  sentAt: { type: 'string', format: 'date-time', nullable: true },
+                  errorMessage: { type: 'string', nullable: true },
+                  createdAt: { type: 'string', format: 'date-time' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async (request) => {
+    const { id } = request.params as { id: string };
+    const { notificationService } = await import('../services/notificationService.js');
+    const notifications = await notificationService.getEventNotifications(id);
+    return { success: true, data: notifications };
+  });
 }
 // Note: Budget endpoints are in financial-import.routes.ts
