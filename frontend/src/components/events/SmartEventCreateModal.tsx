@@ -265,7 +265,7 @@ export function SmartEventCreateModal({ open, onOpenChange, onCreated }: SmartEv
       const selectedDate = new Date(form.eventDate);
       const gameDate = new Date(game.gameDate);
       const dayDiff = Math.abs((gameDate.getTime() - selectedDate.getTime()) / (1000 * 60 * 60 * 24));
-      if (dayDiff > 1) return false; // Only show games within 1 day of selected date
+      if (dayDiff > 3) return false; // Only show games within 3 days of selected date (AC-94.4)
     }
     
     // Filter by region if selected

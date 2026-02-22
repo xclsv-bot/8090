@@ -176,29 +176,25 @@ class TrafficPredictionService {
     const fromDate = dateFrom || new Date();
     const toDate = dateTo || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
     
+    // Query events directly (no venues table - venue is stored as text on events)
     const events = await db.query<{
       id: string;
-      venue_id: string;
-      venue_name: string;
+      venue: string;
+      city: string;
+      state: string;
       event_date: Date;
-      home_team: string;
-      away_team: string;
-      league: string;
-      is_playoffs: boolean;
-      broadcast_network: string;
+      title: string;
+      signup_goal: number;
     }>(
       `SELECT 
         e.id,
-        e.venue_id,
-        v.name as venue_name,
+        e.venue,
+        e.city,
+        e.state,
         e.event_date,
-        e.home_team,
-        e.away_team,
-        e.league,
-        e.is_playoffs,
-        e.broadcast_network
+        e.title,
+        e.signup_goal
        FROM events e
-       JOIN venues v ON e.venue_id = v.id
        WHERE e.event_date >= $1 
          AND e.event_date <= $2
          AND e.status NOT IN ('cancelled', 'completed')
@@ -209,28 +205,64 @@ class TrafficPredictionService {
     
     const recommendations: Recommendation[] = [];
     
+    // Look up relevant sports games for date range
+    const games = await db.query<{
+      home_team: string;
+      away_team: string;
+      league: string;
+      is_playoffs: boolean;
+      broadcast_network: string;
+      game_date: Date;
+      city: string;
+      state: string;
+    }>(
+      `SELECT 
+        home_team->>'name' as home_team,
+        away_team->>'name' as away_team,
+        league,
+        COALESCE((relevance_flags->>'isPlayoff')::boolean, false) as is_playoffs,
+        broadcasts[1]->>'network' as broadcast_network,
+        game_date,
+        venue->>'city' as city,
+        venue->>'state' as state
+       FROM sports_calendar
+       WHERE game_date >= $1 AND game_date <= $2
+       ORDER BY game_date ASC`,
+      [fromDate.toISOString(), toDate.toISOString()]
+    );
+    
     for (const event of events.rows) {
       try {
-        const score = await this.calculateScore({
-          eventId: event.id,
-          venueId: event.venue_id,
-          eventDate: new Date(event.event_date),
-          game: {
-            homeTeam: event.home_team,
-            awayTeam: event.away_team,
-            league: event.league,
-            isPlayoffs: event.is_playoffs,
-            broadcastNetwork: event.broadcast_network,
-          },
-        });
+        // Find matching games by city/region
+        const matchingGame = games.rows.find(g => 
+          g.city?.toLowerCase() === event.city?.toLowerCase() ||
+          g.state?.toLowerCase()?.includes(event.city?.toLowerCase() || '')
+        );
+        
+        // Calculate a simplified score based on available data
+        const dayOfWeek = new Date(event.event_date).getDay();
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 5 || dayOfWeek === 6;
+        
+        let baseScore = 50; // Default score
+        if (matchingGame) baseScore += 25; // Game in area
+        if (matchingGame?.is_playoffs) baseScore += 15;
+        if (isWeekend) baseScore += 10;
+        
+        const normalizedScore = Math.min(100, baseScore);
+        const tier = normalizedScore >= 85 ? 'excellent' : 
+                     normalizedScore >= 70 ? 'good' : 
+                     normalizedScore >= 50 ? 'average' : 
+                     normalizedScore >= 35 ? 'below_average' : 'poor';
         
         recommendations.push({
-          venueId: event.venue_id,
-          venueName: event.venue_name,
-          score: score.normalizedScore,
-          tier: score.tier,
-          reason: this.generateRecommendationReason(score),
-          suggestedAmbassadors: this.suggestAmbassadorCount(score),
+          venueId: event.id, // Use event ID as identifier
+          venueName: event.venue || event.title,
+          score: normalizedScore,
+          tier,
+          reason: matchingGame 
+            ? `${matchingGame.home_team} vs ${matchingGame.away_team} game nearby`
+            : isWeekend ? 'Weekend event' : 'Scheduled event',
+          suggestedAmbassadors: Math.max(2, Math.ceil((event.signup_goal || 20) / 10)),
         });
       } catch (error) {
         logger.warn({ eventId: event.id, error }, 'Failed to calculate score for event');

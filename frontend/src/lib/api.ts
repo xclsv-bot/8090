@@ -308,7 +308,9 @@ export const assignmentsApi = {
       body: JSON.stringify({ status, declinedReason: reason }) 
     }),
   suggest: (eventId: string, limit?: number) =>
-    fetchApi<SuggestedAmbassador[]>(`/api/v1/assignments/suggest/${eventId}${limit ? `?limit=${limit}` : ''}`),
+    fetchApi<SuggestedAmbassador[]>(`/api/v1/assignments/suggest/${eventId}${limit ? `?limit=${limit}` : ''}`, {
+      method: 'POST',
+    }),
 };
 
 // ============================================

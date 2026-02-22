@@ -6,18 +6,51 @@ import type { EventBudgetData } from '@/types';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { DollarSign, Save, Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { DollarSign, Save, Loader2, TrendingUp, TrendingDown } from 'lucide-react';
 
 interface EventBudgetSectionProps {
   eventId: string;
   eventStatus: string;
 }
 
+interface ActualsData {
+  actualSignups?: number;
+  actualRevenue?: number;
+  actualStaff?: number;
+  actualReimbursements?: number;
+  actualRewards?: number;
+  actualBase?: number;
+  actualBonusKickback?: number;
+  actualParking?: number;
+  actualSetup?: number;
+  actualAdditional1?: number;
+  actualAdditional2?: number;
+  actualAdditional3?: number;
+  actualTotal?: number;
+}
+
+// Calculate variance percentage
+function getVariance(budget: number, actual: number): number {
+  if (budget === 0) return actual > 0 ? 100 : 0;
+  return ((actual - budget) / budget) * 100;
+}
+
+// Get variance styling
+function getVarianceClass(variance: number): string {
+  const absVariance = Math.abs(variance);
+  if (absVariance > 20) return variance > 0 ? 'text-red-600 font-bold' : 'text-green-600 font-bold';
+  if (absVariance > 10) return variance > 0 ? 'text-orange-500' : 'text-green-500';
+  return 'text-gray-600';
+}
+
 export function EventBudgetSection({ eventId, eventStatus }: EventBudgetSectionProps) {
   const [budget, setBudget] = useState<EventBudgetData>({});
+  const [actuals, setActuals] = useState<ActualsData>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const isCompleted = eventStatus === 'completed';
 
   useEffect(() => {
     loadBudget();
@@ -28,6 +61,24 @@ export function EventBudgetSection({ eventId, eventStatus }: EventBudgetSectionP
       const res = await eventsApi.getBudget(eventId);
       if (res.data) {
         setBudget(res.data);
+        // For completed events, actuals are included in budget response
+        if (isCompleted && res.data) {
+          setActuals({
+            actualSignups: res.data.actualSignups,
+            actualRevenue: res.data.actualRevenue,
+            actualStaff: res.data.actualStaff,
+            actualReimbursements: res.data.actualReimbursements,
+            actualRewards: res.data.actualRewards,
+            actualBase: res.data.actualBase,
+            actualBonusKickback: res.data.actualBonusKickback,
+            actualParking: res.data.actualParking,
+            actualSetup: res.data.actualSetup,
+            actualAdditional1: res.data.actualAdditional1,
+            actualAdditional2: res.data.actualAdditional2,
+            actualAdditional3: res.data.actualAdditional3,
+            actualTotal: res.data.actualTotal,
+          });
+        }
       }
     } catch (error) {
       console.error('Failed to load budget:', error);
@@ -88,7 +139,6 @@ export function EventBudgetSection({ eventId, eventStatus }: EventBudgetSectionP
     toNum(budget.budgetAdditional2) + toNum(budget.budgetAdditional3) + toNum(budget.budgetAdditional4);
   
   const projectedProfit = toNum(budget.projectedRevenue) - budgetTotal;
-  const isCompleted = eventStatus === 'completed';
 
   if (loading) {
     return (
@@ -240,20 +290,97 @@ export function EventBudgetSection({ eventId, eventStatus }: EventBudgetSectionP
 
         {/* Totals */}
         <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Budget Total</span>
-            <span className="font-mono font-medium">${budgetTotal.toLocaleString()}</span>
+          {/* Header row for completed events */}
+          {isCompleted && (
+            <div className="grid grid-cols-4 gap-2 text-xs text-gray-500 font-medium border-b pb-1">
+              <span></span>
+              <span className="text-right">Budget</span>
+              <span className="text-right">Actual</span>
+              <span className="text-right">Variance</span>
+            </div>
+          )}
+          
+          {/* Cost Total Row */}
+          <div className={`${isCompleted ? 'grid grid-cols-4 gap-2' : 'flex justify-between'} text-sm`}>
+            <span className="text-gray-500">Cost Total</span>
+            <span className={`font-mono font-medium ${isCompleted ? 'text-right' : ''}`}>
+              ${budgetTotal.toLocaleString()}
+            </span>
+            {isCompleted && (
+              <>
+                <span className="font-mono font-medium text-right">
+                  ${(actuals.actualTotal || 0).toLocaleString()}
+                </span>
+                <span className={`font-mono text-right ${getVarianceClass(getVariance(budgetTotal, actuals.actualTotal || 0))}`}>
+                  {getVariance(budgetTotal, actuals.actualTotal || 0) > 0 ? '+' : ''}
+                  {getVariance(budgetTotal, actuals.actualTotal || 0).toFixed(1)}%
+                  {Math.abs(getVariance(budgetTotal, actuals.actualTotal || 0)) > 20 && (
+                    getVariance(budgetTotal, actuals.actualTotal || 0) > 0 
+                      ? <TrendingUp className="inline h-3 w-3 ml-1" />
+                      : <TrendingDown className="inline h-3 w-3 ml-1" />
+                  )}
+                </span>
+              </>
+            )}
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Projected Revenue</span>
-            <span className="font-mono font-medium">${(budget.projectedRevenue || 0).toLocaleString()}</span>
+          
+          {/* Revenue Row */}
+          <div className={`${isCompleted ? 'grid grid-cols-4 gap-2' : 'flex justify-between'} text-sm`}>
+            <span className="text-gray-500">{isCompleted ? 'Revenue' : 'Projected Revenue'}</span>
+            <span className={`font-mono font-medium ${isCompleted ? 'text-right' : ''}`}>
+              ${(budget.projectedRevenue || 0).toLocaleString()}
+            </span>
+            {isCompleted && (
+              <>
+                <span className="font-mono font-medium text-right">
+                  ${(actuals.actualRevenue || 0).toLocaleString()}
+                </span>
+                <span className={`font-mono text-right ${getVarianceClass(-getVariance(budget.projectedRevenue || 0, actuals.actualRevenue || 0))}`}>
+                  {getVariance(budget.projectedRevenue || 0, actuals.actualRevenue || 0) > 0 ? '+' : ''}
+                  {getVariance(budget.projectedRevenue || 0, actuals.actualRevenue || 0).toFixed(1)}%
+                </span>
+              </>
+            )}
           </div>
-          <div className="flex justify-between text-sm border-t pt-2">
-            <span className="font-medium">Projected Profit</span>
-            <span className={`font-mono font-bold ${projectedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          
+          {/* Profit Row */}
+          <div className={`${isCompleted ? 'grid grid-cols-4 gap-2' : 'flex justify-between'} text-sm border-t pt-2`}>
+            <span className="font-medium">{isCompleted ? 'Profit' : 'Projected Profit'}</span>
+            <span className={`font-mono font-bold ${isCompleted ? 'text-right' : ''} ${projectedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               {projectedProfit >= 0 ? '+' : ''}${projectedProfit.toLocaleString()}
             </span>
+            {isCompleted && (
+              <>
+                {(() => {
+                  const actualProfit = (actuals.actualRevenue || 0) - (actuals.actualTotal || 0);
+                  return (
+                    <>
+                      <span className={`font-mono font-bold text-right ${actualProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {actualProfit >= 0 ? '+' : ''}${actualProfit.toLocaleString()}
+                      </span>
+                      <span className={`font-mono text-right ${getVarianceClass(-getVariance(projectedProfit, actualProfit))}`}>
+                        {getVariance(projectedProfit, actualProfit) > 0 ? '+' : ''}
+                        {projectedProfit !== 0 ? getVariance(projectedProfit, actualProfit).toFixed(1) + '%' : '—'}
+                      </span>
+                    </>
+                  );
+                })()}
+              </>
+            )}
           </div>
+          
+          {/* Signups comparison for completed events */}
+          {isCompleted && (
+            <div className="grid grid-cols-4 gap-2 text-sm pt-2 border-t">
+              <span className="text-gray-500">Signups</span>
+              <span className="font-mono text-right">{budget.projectedSignups || 0}</span>
+              <span className="font-mono text-right">{actuals.actualSignups || 0}</span>
+              <span className={`font-mono text-right ${getVarianceClass(-getVariance(budget.projectedSignups || 0, actuals.actualSignups || 0))}`}>
+                {getVariance(budget.projectedSignups || 0, actuals.actualSignups || 0) > 0 ? '+' : ''}
+                {getVariance(budget.projectedSignups || 0, actuals.actualSignups || 0).toFixed(1)}%
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Notes */}
