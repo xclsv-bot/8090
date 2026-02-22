@@ -196,6 +196,7 @@ export function SmartEventCreateModal({ open, onOpenChange, onCreated }: SmartEv
       region: game.city || prev.region,
       eventDate: gameDate,
       startTime: game.gameTime ? game.gameTime.substring(0, 5) : '17:00',
+      venueId: prev.venueId,
     }));
   }
 
@@ -204,12 +205,15 @@ export function SmartEventCreateModal({ open, onOpenChange, onCreated }: SmartEv
     setForm({
       title: suggestion.title,
       venue: suggestion.venue,
+      venueId: '',
       region: suggestion.city || suggestion.state || '',
       eventDate: suggestionDate,
       startTime: suggestion.startTime || '17:00',
       endTime: suggestion.endTime || '22:00',
       description: '',
     });
+    setShowNewVenue(true);
+    setNewVenueName(suggestion.venue);
   }
 
   async function handleSubmit(e: React.FormEvent) {
