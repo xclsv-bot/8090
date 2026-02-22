@@ -205,6 +205,20 @@ export default function EventsPage() {
     setSelectedEvent(event);
   };
 
+  // Handle delete event
+  const handleDeleteEvent = async (event: Event) => {
+    if (!confirm(`Are you sure you want to delete "${event.title}"? This cannot be undone.`)) {
+      return;
+    }
+    try {
+      await eventsApi.delete(event.id);
+      loadEvents();
+    } catch (error) {
+      console.error('Failed to delete event:', error);
+      alert('Failed to delete event');
+    }
+  };
+
   return (
     <div className="p-8">
       {/* Header */}
@@ -300,6 +314,7 @@ export default function EventsPage() {
           onEventClick={handleEventClick}
           onDuplicate={setDuplicateEvent}
           onBulkDuplicate={setBulkDuplicateEvent}
+          onDelete={handleDeleteEvent}
         />
       )}
 

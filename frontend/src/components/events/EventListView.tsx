@@ -29,6 +29,7 @@ import {
   CalendarRange,
   ChevronLeft,
   ChevronRight,
+  Trash2,
 } from 'lucide-react';
 import type { Event, EventStatus } from '@/types';
 
@@ -37,6 +38,7 @@ interface EventListViewProps {
   onEventClick: (event: Event) => void;
   onDuplicate?: (event: Event) => void;
   onBulkDuplicate?: (event: Event) => void;
+  onDelete?: (event: Event) => void;
 }
 
 // Sortable columns (AC-EM-006.2)
@@ -58,6 +60,7 @@ export function EventListView({
   onEventClick,
   onDuplicate,
   onBulkDuplicate,
+  onDelete,
 }: EventListViewProps) {
   // Sorting state (AC-EM-006.2)
   const [sortField, setSortField] = useState<SortField>('eventDate');
@@ -289,6 +292,21 @@ export function EventListView({
                           <CalendarRange className="mr-2 h-4 w-4" />
                           Bulk Duplicate
                         </DropdownMenuItem>
+                      )}
+                      {onDelete && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDelete(event);
+                            }}
+                            className="text-red-600 focus:text-red-600"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </>
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
