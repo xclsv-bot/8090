@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { format, subMonths, startOfMonth, parseISO } from 'date-fns';
+import { format, subMonths, startOfMonth, parseISO, startOfWeek, endOfWeek, addWeeks, subWeeks } from 'date-fns';
 import { signupsApi, eventsApi, ambassadorsApi, operatorsApi } from '@/lib/api';
 import type { Signup, Event, Ambassador, Operator } from '@/types';
 import { Search, Eye, Check, X, Loader2 } from 'lucide-react';
@@ -20,27 +20,63 @@ function getMonthOptions() {
   return options;
 }
 
+function getWeekOptions() {
+  const options = [];
+  const now = new Date();
+  // Get current week start (Monday)
+  const currentWeekStart = startOfWeek(now, { weekStartsOn: 1 });
+  
+  for (let i = 0; i < 12; i++) {
+    const weekStart = subWeeks(currentWeekStart, i);
+    const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+    options.push({
+      value: format(weekStart, 'yyyy-MM-dd'),
+      label: `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d, yyyy')}`,
+    });
+  }
+  return options;
+}
+
 export default function SignupsPage() {
   const [signups, setSignups] = useState<Signup[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [ambassadors, setAmbassadors] = useState<Ambassador[]>([]);
   const [operators, setOperators] = useState<Operator[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filterType, setFilterType] = useState<'month' | 'week'>('month');
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [selectedWeek, setSelectedWeek] = useState(format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd'));
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedSignup, setSelectedSignup] = useState<Signup | null>(null);
   const [totalSignups, setTotalSignups] = useState(0);
   
   const monthOptions = getMonthOptions();
+  const weekOptions = getWeekOptions();
+
+  // Calculate date range based on filter type
+  const getDateRange = useCallback(() => {
+    if (filterType === 'week') {
+      const weekStart = parseISO(selectedWeek);
+      const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+      return {
+        startDate: format(weekStart, 'yyyy-MM-dd'),
+        endDate: format(weekEnd, 'yyyy-MM-dd'),
+      };
+    } else {
+      const [year, month] = selectedMonth.split('-').map(Number);
+      return {
+        startDate: format(new Date(year, month - 1, 1), 'yyyy-MM-dd'),
+        endDate: format(new Date(year, month, 0), 'yyyy-MM-dd'),
+      };
+    }
+  }, [filterType, selectedMonth, selectedWeek]);
 
   // Load signups
   const loadSignups = useCallback(async () => {
     setLoading(true);
     try {
-      const [year, month] = selectedMonth.split('-').map(Number);
-      const startDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
-      const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+      const { startDate, endDate } = getDateRange();
       
       const response = await signupsApi.list({
         startDate,
@@ -54,7 +90,7 @@ export default function SignupsPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedMonth]);
+  }, [getDateRange]);
 
   // Load reference data
   const loadReferenceData = useCallback(async () => {
@@ -154,17 +190,56 @@ export default function SignupsPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#22C55E] focus:border-transparent"
-          >
-            {monthOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+          {/* Filter Type Toggle */}
+          <div className="flex rounded-xl border border-gray-200 bg-white overflow-hidden">
+            <button
+              onClick={() => setFilterType('month')}
+              className={`px-4 py-2 text-sm font-medium transition-colors ${
+                filterType === 'month' 
+                  ? 'bg-[#22C55E] text-white' 
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              Month
+            </button>
+            <button
+              onClick={() => setFilterType('week')}
+              className={`px-4 py-2 text-sm font-medium transition-colors ${
+                filterType === 'week' 
+                  ? 'bg-[#22C55E] text-white' 
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              Week
+            </button>
+          </div>
+          
+          {/* Date Selector */}
+          {filterType === 'month' ? (
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#22C55E] focus:border-transparent"
+            >
+              {monthOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <select
+              value={selectedWeek}
+              onChange={(e) => setSelectedWeek(e.target.value)}
+              className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#22C55E] focus:border-transparent"
+            >
+              {weekOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
 

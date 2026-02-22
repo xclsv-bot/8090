@@ -401,7 +401,18 @@ export const signupsApi = {
     extractionStatus?: string;
     search?: string;
   }) => {
-    const query = new URLSearchParams(params as Record<string, string>).toString();
+    // Transform startDate/endDate to fromDate/toDate for backend compatibility
+    const queryParams: Record<string, string> = {};
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== '') {
+          if (key === 'startDate') queryParams.fromDate = value;
+          else if (key === 'endDate') queryParams.toDate = value;
+          else queryParams[key] = String(value);
+        }
+      });
+    }
+    const query = new URLSearchParams(queryParams).toString();
     return fetchApi<Signup[]>(`/api/v1/signups${query ? `?${query}` : ''}`);
   },
   get: (id: string) => fetchApi<Signup>(`/api/v1/signups/${id}`),
