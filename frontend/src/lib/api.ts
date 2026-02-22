@@ -205,16 +205,21 @@ export const eventsApi = {
   },
   
   // WO-96: Event Budget (transforms snake_case response to camelCase)
+  // Handles both wrapped {data: {...}} and unwrapped {...} responses
   getBudget: async (eventId: string) => {
     const res = await fetchApi<Record<string, unknown>>(`/api/v1/events/${eventId}/budget`);
-    return { ...res, data: transformBudgetResponse(res.data) };
+    // If response has data property, use it; otherwise treat entire response as data
+    const budgetData = res.data ?? (res.id ? res : null);
+    return { success: true, data: transformBudgetResponse(budgetData as Record<string, unknown> | null) };
   },
   updateBudget: async (eventId: string, data: Partial<EventBudgetData>) => {
     const res = await fetchApi<Record<string, unknown>>(`/api/v1/events/${eventId}/budget`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
-    return { ...res, data: transformBudgetResponse(res.data) };
+    // If response has data property, use it; otherwise treat entire response as data
+    const budgetData = res.data ?? (res.id ? res : null);
+    return { success: true, data: transformBudgetResponse(budgetData as Record<string, unknown> | null) };
   },
 };
 
