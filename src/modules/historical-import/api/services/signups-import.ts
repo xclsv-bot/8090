@@ -210,7 +210,7 @@ export async function importSignups(
             ambassadorId = inserted.rows[0].id;
             result.ambassadorsCreated++;
           }
-          ambassadorMap.set(ambassadorName, ambassadorId);
+          ambassadorMap.set(ambassadorName, ambassadorId!);
         }
       }
       
@@ -243,7 +243,7 @@ export async function importSignups(
             operatorId = inserted.rows[0].id;
             result.operatorsCreated++;
           }
-          operatorMap.set(operator, operatorId);
+          operatorMap.set(operator, operatorId!);
         }
       }
       
@@ -283,7 +283,7 @@ export async function importSignups(
             eventIdForSignup = inserted.rows[0].id;
             result.eventsCreated++;
           }
-          eventMap.set(key, eventIdForSignup);
+          eventMap.set(key, eventIdForSignup!);
         }
       }
       

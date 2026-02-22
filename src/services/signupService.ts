@@ -217,15 +217,19 @@ class SignupService {
     ]);
 
     // Transform to include nested ambassador and operator objects
-    const items = rawItems.map(item => ({
-      ...item,
-      ambassador: item.ambassadorId ? {
-        id: item.ambassadorId,
-        firstName: item.ambassador_first_name || '',
-        lastName: item.ambassador_last_name || '',
-      } : undefined,
-      operatorName: item.operator_name || undefined,
-    })) as Signup[];
+    // Note: rawItems use snake_case from DB (ambassador_id), types use camelCase (ambassadorId)
+    const items = rawItems.map(item => {
+      const rawItem = item as any; // Access snake_case properties
+      return {
+        ...item,
+        ambassador: rawItem.ambassador_id ? {
+          id: rawItem.ambassador_id,
+          firstName: rawItem.ambassador_first_name || '',
+          lastName: rawItem.ambassador_last_name || '',
+        } : undefined,
+        operatorName: rawItem.operator_name || undefined,
+      };
+    }) as Signup[];
 
     return {
       items,

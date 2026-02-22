@@ -113,7 +113,7 @@ function parseCSV(csvContent: string): CSVRow[] {
     headers.forEach((header, idx) => {
       const mappedKey = headerMap[header] || header;
       if (mappedKey in row && values[idx] !== undefined) {
-        (row as Record<string, string>)[mappedKey] = values[idx]?.trim() || '';
+        (row as unknown as Record<string, string>)[mappedKey] = values[idx]?.trim() || '';
       }
     });
     
