@@ -325,6 +325,14 @@ export async function financialImportRoutes(fastify: FastifyInstance) {
         ]);
       }
       
+      // Sync projected_signups to event's signup_goal field
+      if (body.projectedSignups !== undefined) {
+        await pool.query(
+          'UPDATE events SET signup_goal = $1, updated_at = NOW() WHERE id = $2',
+          [body.projectedSignups || 0, eventId]
+        );
+      }
+      
       // Return updated budget
       const result = await pool.query(`
         SELECT eb.*, e.title as event_name, e.event_date as event_date
