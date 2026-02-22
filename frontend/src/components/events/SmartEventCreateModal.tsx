@@ -90,17 +90,30 @@ const REGIONS = [
   'Seattle',
 ];
 
+interface Venue {
+  id: string;
+  name: string;
+  region: string;
+  address?: string;
+  status: string;
+}
+
 export function SmartEventCreateModal({ open, onOpenChange, onCreated }: SmartEventCreateModalProps) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState<EventSuggestion[]>([]);
   const [upcomingGames, setUpcomingGames] = useState<SportsGame[]>([]);
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [showNewVenue, setShowNewVenue] = useState(false);
+  const [newVenueName, setNewVenueName] = useState('');
+  const [newVenueAddress, setNewVenueAddress] = useState('');
   
   // Form state
   const [form, setForm] = useState({
     title: '',
     venue: '',
+    venueId: '',
     region: '',
     eventDate: '',
     startTime: '17:00',
@@ -123,11 +136,17 @@ export function SmartEventCreateModal({ open, onOpenChange, onCreated }: SmartEv
   async function loadSuggestions() {
     setLoadingSuggestions(true);
     try {
-      // Try to fetch recommendations and upcoming games in parallel
-      const [recsRes, gamesRes] = await Promise.allSettled([
+      // Try to fetch recommendations, upcoming games, and venues in parallel
+      const [recsRes, gamesRes, venuesRes] = await Promise.allSettled([
         fetch(`${API_URL}/api/v1/traffic-prediction/recommendations?limit=10`).then(r => r.json()),
-        fetch(`${API_URL}/api/v1/sports-calendar/upcoming?days=14`).then(r => r.json()),
+        fetch(`${API_URL}/api/v1/sports-calendar/upcoming?limit=15`).then(r => r.json()),
+        fetch(`${API_URL}/api/v1/venues`).then(r => r.json()),
       ]);
+
+      // Process venues
+      if (venuesRes.status === 'fulfilled' && venuesRes.value?.data) {
+        setVenues(venuesRes.value.data);
+      }
 
       // Process recommendations
       if (recsRes.status === 'fulfilled' && recsRes.value?.data) {
@@ -271,12 +290,69 @@ export function SmartEventCreateModal({ open, onOpenChange, onCreated }: SmartEv
 
               <div>
                 <label className="text-sm font-medium">Venue *</label>
-                <Input
-                  value={form.venue}
-                  onChange={(e) => setForm(prev => ({ ...prev, venue: e.target.value }))}
-                  placeholder="The Sports Bar"
-                  required
-                />
+                {!showNewVenue ? (
+                  <div className="space-y-2">
+                    <select
+                      className="w-full mt-1 px-3 py-2 border rounded-md text-sm"
+                      value={form.venueId}
+                      onChange={(e) => {
+                        if (e.target.value === 'new') {
+                          setShowNewVenue(true);
+                          setForm(prev => ({ ...prev, venueId: '', venue: '' }));
+                        } else {
+                          const selectedVenue = venues.find(v => v.id === e.target.value);
+                          setForm(prev => ({ 
+                            ...prev, 
+                            venueId: e.target.value,
+                            venue: selectedVenue?.name || '',
+                            region: selectedVenue?.region || prev.region
+                          }));
+                        }
+                      }}
+                      required={!showNewVenue}
+                    >
+                      <option value="">Select a venue...</option>
+                      {venues
+                        .filter(v => !form.region || v.region === form.region)
+                        .filter(v => v.status === 'Active')
+                        .map(v => (
+                          <option key={v.id} value={v.id}>{v.name} ({v.region})</option>
+                        ))
+                      }
+                      <option value="" disabled>───────────</option>
+                      <option value="new">+ Add New Venue</option>
+                    </select>
+                  </div>
+                ) : (
+                  <div className="space-y-2 mt-1">
+                    <Input
+                      value={newVenueName}
+                      onChange={(e) => {
+                        setNewVenueName(e.target.value);
+                        setForm(prev => ({ ...prev, venue: e.target.value }));
+                      }}
+                      placeholder="Venue name"
+                      required
+                    />
+                    <Input
+                      value={newVenueAddress}
+                      onChange={(e) => setNewVenueAddress(e.target.value)}
+                      placeholder="Address (optional)"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setShowNewVenue(false);
+                        setNewVenueName('');
+                        setNewVenueAddress('');
+                      }}
+                    >
+                      ← Back to venue list
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <div>

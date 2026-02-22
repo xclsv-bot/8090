@@ -36,6 +36,7 @@ import { sportsCalendarRoutes } from './sports-calendar.js';
 import oauthRoutes from './oauth.js';
 import webhookRoutes from './webhooks.js';
 import { manualInsightRoutes } from './manual-insights.js';
+import { venueRoutes } from './venues.js';
 
 /**
  * Register all routes
@@ -83,6 +84,7 @@ export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
   await fastify.register(oauthRoutes, { prefix: '/api/v1/oauth' });
   await fastify.register(webhookRoutes, { prefix: '/api/v1/webhooks' });
   await fastify.register(manualInsightRoutes, { prefix: '/api/v1/manual-insights' });
+  await fastify.register(venueRoutes, { prefix: '/api/v1/venues' });
 
   // Root endpoint
   fastify.get('/', async () => {
