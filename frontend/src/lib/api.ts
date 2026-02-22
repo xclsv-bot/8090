@@ -226,7 +226,8 @@ export const eventsApi = {
   getBudget: async (eventId: string) => {
     const res = await fetchApi<Record<string, unknown>>(`/api/v1/events/${eventId}/budget`);
     // If response has data property, use it; otherwise treat entire response as data
-    const budgetData = res.data ?? (res.id ? res : null);
+    const rawRes = res as unknown as Record<string, unknown>;
+    const budgetData = res.data ?? (rawRes.id ? rawRes : null);
     return { success: true, data: transformBudgetResponse(budgetData as Record<string, unknown> | null) };
   },
   updateBudget: async (eventId: string, data: Partial<EventBudgetData>) => {
@@ -235,7 +236,8 @@ export const eventsApi = {
       body: JSON.stringify(data),
     });
     // If response has data property, use it; otherwise treat entire response as data
-    const budgetData = res.data ?? (res.id ? res : null);
+    const rawRes = res as unknown as Record<string, unknown>;
+    const budgetData = res.data ?? (rawRes.id ? rawRes : null);
     return { success: true, data: transformBudgetResponse(budgetData as Record<string, unknown> | null) };
   },
 };

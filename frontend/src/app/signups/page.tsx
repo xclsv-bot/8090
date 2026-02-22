@@ -1,137 +1,60 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { format, subMonths, startOfMonth, parseISO } from 'date-fns';
 import { signupsApi, eventsApi, ambassadorsApi, operatorsApi } from '@/lib/api';
-import type { 
-  Signup, 
-  Event, 
-  Ambassador, 
-  Operator, 
-  ExtractionQueueItem,
-  SyncFailure,
-} from '@/types';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
-import { 
-  SignupDetailModal,
-  ExtractionReviewQueue,
-  SyncFailureQueue,
-} from '@/components/signups';
-import { 
-  FileSignature, 
-  Check, 
-  X, 
-  Search, 
-  Eye,
-  RefreshCw,
-  AlertCircle,
-  TrendingUp,
-  Users,
-  Clock,
-  Zap,
-  ChevronLeft,
-  ChevronRight,
-  Loader2,
-} from 'lucide-react';
+import type { Signup, Event, Ambassador, Operator } from '@/types';
+import { Search, Eye, Check, X, Loader2 } from 'lucide-react';
+import { SignupDetailModal } from '@/components/signups';
 
-const statusColors: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-700',
-  validated: 'bg-green-100 text-green-700',
-  rejected: 'bg-red-100 text-red-700',
-  duplicate: 'bg-gray-100 text-gray-700',
-};
-
-const extractionStatusColors: Record<string, string> = {
-  pending: 'bg-blue-100 text-blue-700',
-  completed: 'bg-green-100 text-green-700',
-  confirmed: 'bg-green-100 text-green-700',
-  failed: 'bg-red-100 text-red-700',
-  needs_review: 'bg-yellow-100 text-yellow-700',
-  skipped: 'bg-gray-100 text-gray-700',
-};
+function getMonthOptions() {
+  const options = [];
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const date = subMonths(startOfMonth(now), i);
+    options.push({
+      value: format(date, 'yyyy-MM'),
+      label: format(date, 'MMMM yyyy'),
+    });
+  }
+  return options;
+}
 
 export default function SignupsPage() {
-  // Core data
   const [signups, setSignups] = useState<Signup[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [ambassadors, setAmbassadors] = useState<Ambassador[]>([]);
   const [operators, setOperators] = useState<Operator[]>([]);
-  
-  // Extraction queue
-  const [extractionQueue, setExtractionQueue] = useState<ExtractionQueueItem[]>([]);
-  const [extractionTotal, setExtractionTotal] = useState(0);
-  const [extractionPage, setExtractionPage] = useState(1);
-  
-  // Sync failures
-  const [syncFailures, setSyncFailures] = useState<SyncFailure[]>([]);
-  const [syncFailuresTotal, setSyncFailuresTotal] = useState(0);
-  const [syncPage, setSyncPage] = useState(1);
-  const [syncFilters, setSyncFilters] = useState<{ syncPhase?: string; errorType?: string }>({});
-  
-  // UI state
   const [loading, setLoading] = useState(true);
-  const [loadingExtraction, setLoadingExtraction] = useState(false);
-  const [loadingSync, setLoadingSync] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const [totalSignups, setTotalSignups] = useState(0);
-  const [filters, setFilters] = useState({
-    validationStatus: '',
-    extractionStatus: '',
-    eventId: '',
-    ambassadorId: '',
-    operatorId: '',
-    startDate: '',
-    endDate: '',
-  });
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedSignup, setSelectedSignup] = useState<Signup | null>(null);
-  const [activeTab, setActiveTab] = useState('all');
-
-  const pageSize = 50;
-
-  // WebSocket for real-time updates
-  const { subscribe, isConnected } = useWebSocket();
+  const [totalSignups, setTotalSignups] = useState(0);
+  
+  const monthOptions = getMonthOptions();
 
   // Load signups
   const loadSignups = useCallback(async () => {
+    setLoading(true);
     try {
-      const params: Record<string, string> = {
-        page: String(page),
-        limit: String(pageSize),
-      };
-      if (filters.validationStatus) params.validationStatus = filters.validationStatus;
-      if (filters.extractionStatus) params.extractionStatus = filters.extractionStatus;
-      if (filters.eventId) params.eventId = filters.eventId;
-      if (filters.ambassadorId) params.ambassadorId = filters.ambassadorId;
-      if (filters.operatorId) params.operatorId = filters.operatorId;
-      if (filters.startDate) params.startDate = filters.startDate;
-      if (filters.endDate) params.endDate = filters.endDate;
-      if (search) params.search = search;
-
-      const response = await signupsApi.list(params);
+      const [year, month] = selectedMonth.split('-').map(Number);
+      const startDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
+      const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+      
+      const response = await signupsApi.list({
+        startDate,
+        endDate,
+        limit: 500,
+      });
       setSignups(response.data || []);
-      setTotalSignups(response.meta?.total || 0);
+      setTotalSignups(response.meta?.total || response.data?.length || 0);
     } catch (error) {
       console.error('Failed to load signups:', error);
+    } finally {
+      setLoading(false);
     }
-  }, [page, filters, search]);
+  }, [selectedMonth]);
 
   // Load reference data
   const loadReferenceData = useCallback(async () => {
@@ -149,105 +72,48 @@ export default function SignupsPage() {
     }
   }, []);
 
-  // Load extraction queue
-  const loadExtractionQueue = useCallback(async () => {
-    setLoadingExtraction(true);
-    try {
-      const response = await signupsApi.getExtractionQueue({
-        page: extractionPage,
-        pageSize: 20,
-        sortBy: 'priority',
-      });
-      setExtractionQueue(response.data?.signups || []);
-      setExtractionTotal(response.data?.totalPending || 0);
-    } catch (error) {
-      console.error('Failed to load extraction queue:', error);
-    } finally {
-      setLoadingExtraction(false);
-    }
-  }, [extractionPage]);
-
-  // Load sync failures
-  const loadSyncFailures = useCallback(async () => {
-    setLoadingSync(true);
-    try {
-      const params: Record<string, string> = {
-        limit: '20',
-        offset: String((syncPage - 1) * 20),
-      };
-      if (syncFilters.syncPhase) params.syncPhase = syncFilters.syncPhase;
-      if (syncFilters.errorType) params.errorType = syncFilters.errorType;
-
-      const response = await signupsApi.getSyncFailures(params);
-      setSyncFailures(response.data || []);
-      setSyncFailuresTotal(response.meta?.total || 0);
-    } catch (error) {
-      console.error('Failed to load sync failures:', error);
-    } finally {
-      setLoadingSync(false);
-    }
-  }, [syncPage, syncFilters]);
-
-  // Initial load
   useEffect(() => {
-    const init = async () => {
-      setLoading(true);
-      await Promise.all([
-        loadSignups(),
-        loadReferenceData(),
-        loadExtractionQueue(),
-        loadSyncFailures(),
-      ]);
-      setLoading(false);
-    };
-    init();
-  }, []);
+    loadReferenceData();
+  }, [loadReferenceData]);
 
-  // Reload signups when filters change
   useEffect(() => {
     loadSignups();
   }, [loadSignups]);
 
-  // Reload extraction queue when page changes
-  useEffect(() => {
-    if (activeTab === 'extraction') {
-      loadExtractionQueue();
+  // Filter signups
+  const filteredSignups = signups.filter(signup => {
+    // Search filter
+    if (search) {
+      const searchLower = search.toLowerCase();
+      const name = `${signup.customerFirstName || ''} ${signup.customerLastName || ''}`.toLowerCase();
+      const email = (signup.customerEmail || '').toLowerCase();
+      const ambassadorName = signup.ambassador 
+        ? `${signup.ambassador.firstName} ${signup.ambassador.lastName}`.toLowerCase()
+        : '';
+      if (!name.includes(searchLower) && !email.includes(searchLower) && !ambassadorName.includes(searchLower)) {
+        return false;
+      }
     }
-  }, [extractionPage, activeTab, loadExtractionQueue]);
-
-  // Reload sync failures when page/filters change
-  useEffect(() => {
-    if (activeTab === 'sync') {
-      loadSyncFailures();
-    }
-  }, [syncPage, syncFilters, activeTab, loadSyncFailures]);
-
-  // Subscribe to real-time sign-up events
-  useEffect(() => {
-    const unsubSubmit = subscribe('sign_up.submitted', () => {
-      loadSignups();
-      loadExtractionQueue();
-    });
-    const unsubValidate = subscribe('sign_up.validated', loadSignups);
-    const unsubExtraction = subscribe('sign_up.extraction_confirmed', () => {
-      loadSignups();
-      loadExtractionQueue();
-    });
-    const unsubSkip = subscribe('sign_up.extraction_skipped', () => {
-      loadSignups();
-      loadExtractionQueue();
-    });
     
-    return () => {
-      unsubSubmit();
-      unsubValidate();
-      unsubExtraction();
-      unsubSkip();
-    };
-  }, [subscribe, loadSignups, loadExtractionQueue]);
+    // Status filter
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'pending' && signup.validationStatus !== 'pending') return false;
+      if (statusFilter === 'validated' && signup.validationStatus !== 'validated') return false;
+      if (statusFilter === 'rejected' && signup.validationStatus !== 'rejected') return false;
+    }
+    
+    return true;
+  });
+
+  // Compute stats
+  const stats = {
+    total: filteredSignups.length,
+    validated: filteredSignups.filter(s => s.validationStatus === 'validated').length,
+    revenue: filteredSignups.reduce((sum, s) => sum + Number(s.cpaAmount || 0), 0),
+  };
 
   // Action handlers
-  const handleValidate = useCallback(async (id: string, status: 'validated' | 'rejected') => {
+  const handleValidate = async (id: string, status: 'validated' | 'rejected') => {
     try {
       await signupsApi.validate(id, status);
       loadSignups();
@@ -255,396 +121,240 @@ export default function SignupsPage() {
     } catch (error) {
       console.error('Failed to validate signup:', error);
     }
-  }, [loadSignups]);
+  };
 
-  const handleConfirmExtraction = useCallback(async (
-    id: string, 
-    corrections?: { betAmount?: number; teamBetOn?: string; odds?: string }
-  ) => {
-    await signupsApi.confirmExtraction(id, corrections);
-    loadExtractionQueue();
-    loadSignups();
-  }, [loadExtractionQueue, loadSignups]);
+  // Get ambassador name helper
+  const getAmbassadorName = (signup: Signup) => {
+    if (signup.ambassador) {
+      return `${signup.ambassador.firstName} ${signup.ambassador.lastName}`;
+    }
+    // Fallback: try to find in ambassadors list
+    const ambassador = ambassadors.find(a => a.id === signup.ambassadorId);
+    if (ambassador) {
+      return `${ambassador.firstName} ${ambassador.lastName}`;
+    }
+    return null;
+  };
 
-  const handleSkipExtraction = useCallback(async (id: string, reason?: string) => {
-    await signupsApi.skipExtraction(id, reason);
-    loadExtractionQueue();
-    loadSignups();
-  }, [loadExtractionQueue, loadSignups]);
-
-  const handleRetrySync = useCallback(async (id: string, syncPhase?: 'initial' | 'enriched') => {
-    await signupsApi.retrySync(id, syncPhase);
-    loadSyncFailures();
-  }, [loadSyncFailures]);
-
-  // Computed values
-  const pendingCount = signups.filter(s => s.validationStatus === 'pending').length;
-  const needsReviewCount = extractionTotal;
-  const totalPages = Math.ceil(totalSignups / pageSize);
+  // Get operator name helper
+  const getOperatorName = (signup: Signup) => {
+    if (signup.operatorName) return signup.operatorName;
+    const operator = operators.find(o => o.id === String(signup.operatorId));
+    return operator?.name || `Operator #${signup.operatorId}`;
+  };
 
   return (
     <div className="p-8">
       {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-6 flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Sign-up Management</h1>
-          <p className="text-gray-600">Dashboard for customer registrations and validation</p>
+          <h1 className="text-2xl font-semibold text-gray-900">Sign-ups</h1>
+          <p className="text-gray-500 text-sm mt-1">
+            All customer sign-ups and conversions
+          </p>
         </div>
-        <div className="flex gap-2 items-center">
-          <Badge className={isConnected ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}>
-            {isConnected ? "● Live" : "○ Offline"}
-          </Badge>
-          {needsReviewCount > 0 && (
-            <Badge className="bg-yellow-100 text-yellow-700">
-              {needsReviewCount} need review
-            </Badge>
-          )}
-          {syncFailuresTotal > 0 && (
-            <Badge className="bg-red-100 text-red-700">
-              {syncFailuresTotal} sync failures
-            </Badge>
-          )}
+        <div className="flex items-center gap-3">
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#22C55E] focus:border-transparent"
+          >
+            {monthOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
-      {/* Stats Dashboard */}
-      <div className="mb-6 grid gap-4 md:grid-cols-5">
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <FileSignature className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Total Sign-ups</p>
-              <p className="text-2xl font-bold">{totalSignups}</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <Clock className="h-5 w-5 text-yellow-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Pending Validation</p>
-              <p className="text-2xl font-bold text-yellow-600">{pendingCount}</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <Zap className="h-5 w-5 text-orange-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Needs Review</p>
-              <p className="text-2xl font-bold text-orange-600">{needsReviewCount}</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-red-100 rounded-lg">
-              <AlertCircle className="h-5 w-5 text-red-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Sync Failures</p>
-              <p className="text-2xl font-bold text-red-600">{syncFailuresTotal}</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <TrendingUp className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Today</p>
-              <p className="text-2xl font-bold text-green-600">
-                {signups.filter(s => {
-                  const today = new Date().toDateString();
-                  return new Date(s.submittedAt).toDateString() === today;
-                }).length}
-              </p>
-            </div>
-          </div>
-        </Card>
+      {/* Stats Bar */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="bg-white rounded-xl border border-gray-100 p-4">
+          <div className="text-2xl font-semibold text-gray-900">{stats.total}</div>
+          <div className="text-sm text-gray-500">Total Sign-ups</div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 p-4">
+          <div className="text-2xl font-semibold text-gray-900">{stats.validated}</div>
+          <div className="text-sm text-gray-500">Validated</div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 p-4">
+          <div className="text-2xl font-semibold text-[#22C55E]">${stats.revenue.toLocaleString()}</div>
+          <div className="text-sm text-gray-500">Revenue</div>
+        </div>
       </div>
 
       {/* Filters */}
-      <Card className="mb-6 p-4">
-        <div className="flex flex-wrap gap-4">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <Input
-              className="pl-10"
-              placeholder="Search by name or email..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <select
-            className="rounded-md border px-3 py-2 text-sm"
-            value={filters.validationStatus}
-            onChange={(e) => setFilters({ ...filters, validationStatus: e.target.value })}
-          >
-            <option value="">All Statuses</option>
-            <option value="pending">Pending</option>
-            <option value="validated">Validated</option>
-            <option value="rejected">Rejected</option>
-            <option value="duplicate">Duplicate</option>
-          </select>
-          <select
-            className="rounded-md border px-3 py-2 text-sm"
-            value={filters.extractionStatus}
-            onChange={(e) => setFilters({ ...filters, extractionStatus: e.target.value })}
-          >
-            <option value="">All Extraction</option>
-            <option value="pending">Pending</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="skipped">Skipped</option>
-            <option value="failed">Failed</option>
-          </select>
-          <select
-            className="rounded-md border px-3 py-2 text-sm"
-            value={filters.eventId}
-            onChange={(e) => setFilters({ ...filters, eventId: e.target.value })}
-          >
-            <option value="">All Events</option>
-            {events.map(e => (
-              <option key={e.id} value={e.id}>{e.title}</option>
-            ))}
-          </select>
-          <select
-            className="rounded-md border px-3 py-2 text-sm"
-            value={filters.ambassadorId}
-            onChange={(e) => setFilters({ ...filters, ambassadorId: e.target.value })}
-          >
-            <option value="">All Ambassadors</option>
-            {ambassadors.map(a => (
-              <option key={a.id} value={a.id}>{a.firstName} {a.lastName}</option>
-            ))}
-          </select>
-          <select
-            className="rounded-md border px-3 py-2 text-sm"
-            value={filters.operatorId}
-            onChange={(e) => setFilters({ ...filters, operatorId: e.target.value })}
-          >
-            <option value="">All Operators</option>
-            {operators.map(o => (
-              <option key={o.id} value={o.id}>{o.name}</option>
-            ))}
-          </select>
-          <Input
-            type="date"
-            value={filters.startDate}
-            onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-            className="w-auto"
-          />
-          <Input
-            type="date"
-            value={filters.endDate}
-            onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-            className="w-auto"
+      <div className="mb-6 flex gap-4">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <input
+            type="text"
+            placeholder="Search by name, email, or ambassador..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#22C55E] focus:border-transparent"
           />
         </div>
-      </Card>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#22C55E] focus:border-transparent"
+        >
+          <option value="all">All Status</option>
+          <option value="pending">Pending</option>
+          <option value="validated">Validated</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="all">
-            All Sign-ups
-            <Badge variant="secondary" className="ml-2">{totalSignups}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="extraction">
-            Extraction Review
-            {needsReviewCount > 0 && (
-              <Badge className="ml-2 bg-yellow-100 text-yellow-700">{needsReviewCount}</Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="sync">
-            Sync Failures
-            {syncFailuresTotal > 0 && (
-              <Badge className="ml-2 bg-red-100 text-red-700">{syncFailuresTotal}</Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
-
-        {/* All Sign-ups Tab */}
-        <TabsContent value="all">
-          <Card>
-            {loading ? (
-              <div className="p-8 flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-              </div>
-            ) : signups.length === 0 ? (
-              <div className="p-8 text-center">
-                <FileSignature className="mx-auto h-12 w-12 text-gray-300" />
-                <h3 className="mt-4 text-lg font-medium text-gray-900">No sign-ups found</h3>
-                <p className="mt-1 text-gray-500">Sign-ups will appear here once recorded.</p>
-              </div>
-            ) : (
-              <>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Operator</TableHead>
-                      <TableHead>Ambassador</TableHead>
-                      <TableHead>Submitted</TableHead>
-                      <TableHead>Extraction</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {signups.map((signup) => (
-                      <TableRow key={signup.id}>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">
-                              {signup.customerFirstName} {signup.customerLastName}
-                            </p>
-                            {signup.customerEmail && (
-                              <p className="text-sm text-gray-500">{signup.customerEmail}</p>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>{signup.operatorName || `#${signup.operatorId}`}</TableCell>
-                        <TableCell>
-                          {signup.ambassador 
-                            ? `${signup.ambassador.firstName} ${signup.ambassador.lastName}`
-                            : signup.ambassadorId.slice(0, 8) + '...'}
-                        </TableCell>
-                        <TableCell>
-                          {new Date(signup.submittedAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          {signup.extractionStatus && (
-                            <Badge className={extractionStatusColors[signup.extractionStatus]}>
-                              {signup.extractionStatus}
-                            </Badge>
+      {/* Table */}
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        {loading ? (
+          <div className="p-12 flex flex-col items-center justify-center text-gray-400">
+            <Loader2 className="h-8 w-8 animate-spin mb-2" />
+            <span>Loading sign-ups...</span>
+          </div>
+        ) : filteredSignups.length === 0 ? (
+          <div className="p-12 text-center text-gray-400">
+            No sign-ups found
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50/50">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Customer
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ambassador
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Operator
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    CPA
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Extraction
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {filteredSignups.map((signup) => {
+                  const ambassadorName = getAmbassadorName(signup);
+                  const operatorName = getOperatorName(signup);
+                  
+                  return (
+                    <tr key={signup.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="font-medium text-gray-900 text-sm">
+                          {signup.customerFirstName} {signup.customerLastName}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          {signup.customerEmail || signup.customerPhone || 'No contact'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700">
+                        {ambassadorName || (
+                          <span className="text-amber-500 text-xs font-medium px-2 py-1 bg-amber-50 rounded-full">
+                            Unassigned
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700">
+                        {operatorName}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-semibold text-[#22C55E]">
+                        ${signup.cpaAmount || '—'}
+                      </td>
+                      <td className="px-6 py-4">
+                        {signup.extractionStatus && (
+                          <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                            signup.extractionStatus === 'confirmed' || signup.extractionStatus === 'completed'
+                              ? 'bg-green-50 text-green-600'
+                              : signup.extractionStatus === 'pending'
+                              ? 'bg-yellow-50 text-yellow-600'
+                              : signup.extractionStatus === 'failed'
+                              ? 'bg-red-50 text-red-600'
+                              : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {signup.extractionStatus}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                          signup.validationStatus === 'validated' 
+                            ? 'bg-green-50 text-green-600'
+                            : signup.validationStatus === 'rejected'
+                            ? 'bg-red-50 text-red-600'
+                            : signup.validationStatus === 'pending'
+                            ? 'bg-yellow-50 text-yellow-600'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {signup.validationStatus}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {signup.submittedAt 
+                          ? format(parseISO(signup.submittedAt), 'MMM d, yyyy')
+                          : '—'}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-1">
+                          <button
+                            onClick={() => setSelectedSignup(signup)}
+                            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          {signup.validationStatus === 'pending' && (
+                            <>
+                              <button
+                                onClick={() => handleValidate(signup.id, 'validated')}
+                                className="p-2 text-green-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                              >
+                                <Check className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleValidate(signup.id, 'rejected')}
+                                className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </>
                           )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={statusColors[signup.validationStatus]}>
-                            {signup.validationStatus}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => setSelectedSignup(signup)}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            {signup.validationStatus === 'pending' && (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-green-600 hover:text-green-700"
-                                  onClick={() => handleValidate(signup.id, 'validated')}
-                                >
-                                  <Check className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-red-600 hover:text-red-700"
-                                  onClick={() => handleValidate(signup.id, 'rejected')}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-center gap-2 py-4 border-t">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage(p => Math.max(1, p - 1))}
-                      disabled={page <= 1}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="text-sm text-gray-500">
-                      Page {page} of {totalPages}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                      disabled={page >= totalPages}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </>
-            )}
-          </Card>
-        </TabsContent>
-
-        {/* Extraction Review Tab */}
-        <TabsContent value="extraction">
-          <Card className="p-4">
-            <ExtractionReviewQueue
-              items={extractionQueue}
-              totalPending={extractionTotal}
-              currentPage={extractionPage}
-              pageSize={20}
-              onPageChange={setExtractionPage}
-              onConfirm={handleConfirmExtraction}
-              onSkip={handleSkipExtraction}
-              onRefresh={loadExtractionQueue}
-              loading={loadingExtraction}
-            />
-          </Card>
-        </TabsContent>
-
-        {/* Sync Failures Tab */}
-        <TabsContent value="sync">
-          <Card className="p-4">
-            <SyncFailureQueue
-              failures={syncFailures}
-              total={syncFailuresTotal}
-              currentPage={syncPage}
-              pageSize={20}
-              onPageChange={setSyncPage}
-              onRetry={handleRetrySync}
-              onRefresh={loadSyncFailures}
-              onFilterChange={(f) => {
-                setSyncFilters(f);
-                setSyncPage(1);
-              }}
-              loading={loadingSync}
-            />
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Sign-up Detail Modal */}
-      <SignupDetailModal
-        signup={selectedSignup}
-        open={!!selectedSignup}
-        onClose={() => setSelectedSignup(null)}
-        onValidate={handleValidate}
-        onConfirmExtraction={(id) => handleConfirmExtraction(id)}
-        onSkipExtraction={(id) => handleSkipExtraction(id)}
-        onRetrySync={(id) => handleRetrySync(id)}
-      />
+      {/* Signup Detail Modal */}
+      {selectedSignup && (
+        <SignupDetailModal
+          signup={selectedSignup}
+          open={!!selectedSignup}
+          onClose={() => setSelectedSignup(null)}
+          onValidate={handleValidate}
+        />
+      )}
     </div>
   );
 }
