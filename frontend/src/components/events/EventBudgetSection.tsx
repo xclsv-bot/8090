@@ -39,7 +39,24 @@ export function EventBudgetSection({ eventId, eventStatus }: EventBudgetSectionP
   async function saveBudget() {
     setSaving(true);
     try {
-      const res = await eventsApi.updateBudget(eventId, budget);
+      // Ensure all numeric fields are actual numbers before sending
+      const sanitizedBudget = {
+        ...budget,
+        budgetStaff: Number(budget.budgetStaff) || 0,
+        budgetReimbursements: Number(budget.budgetReimbursements) || 0,
+        budgetRewards: Number(budget.budgetRewards) || 0,
+        budgetBase: Number(budget.budgetBase) || 0,
+        budgetBonusKickback: Number(budget.budgetBonusKickback) || 0,
+        budgetParking: Number(budget.budgetParking) || 0,
+        budgetSetup: Number(budget.budgetSetup) || 0,
+        budgetAdditional1: Number(budget.budgetAdditional1) || 0,
+        budgetAdditional2: Number(budget.budgetAdditional2) || 0,
+        budgetAdditional3: Number(budget.budgetAdditional3) || 0,
+        budgetAdditional4: Number(budget.budgetAdditional4) || 0,
+        projectedSignups: Number(budget.projectedSignups) || 0,
+        projectedRevenue: Number(budget.projectedRevenue) || 0,
+      };
+      const res = await eventsApi.updateBudget(eventId, sanitizedBudget);
       if (res.data) {
         setBudget(res.data);
       }
@@ -63,13 +80,14 @@ export function EventBudgetSection({ eventId, eventStatus }: EventBudgetSectionP
     setHasChanges(true);
   }
 
-  // Calculate totals
-  const budgetTotal = (budget.budgetStaff || 0) + (budget.budgetReimbursements || 0) +
-    (budget.budgetRewards || 0) + (budget.budgetBase || 0) + (budget.budgetBonusKickback || 0) +
-    (budget.budgetParking || 0) + (budget.budgetSetup || 0) + (budget.budgetAdditional1 || 0) +
-    (budget.budgetAdditional2 || 0) + (budget.budgetAdditional3 || 0) + (budget.budgetAdditional4 || 0);
+  // Calculate totals - use Number() to ensure numeric addition, not string concatenation
+  const toNum = (v: unknown) => Number(v) || 0;
+  const budgetTotal = toNum(budget.budgetStaff) + toNum(budget.budgetReimbursements) +
+    toNum(budget.budgetRewards) + toNum(budget.budgetBase) + toNum(budget.budgetBonusKickback) +
+    toNum(budget.budgetParking) + toNum(budget.budgetSetup) + toNum(budget.budgetAdditional1) +
+    toNum(budget.budgetAdditional2) + toNum(budget.budgetAdditional3) + toNum(budget.budgetAdditional4);
   
-  const projectedProfit = (budget.projectedRevenue || 0) - budgetTotal;
+  const projectedProfit = toNum(budget.projectedRevenue) - budgetTotal;
   const isCompleted = eventStatus === 'completed';
 
   if (loading) {
