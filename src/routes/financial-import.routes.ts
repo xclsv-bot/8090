@@ -194,10 +194,11 @@ export async function financialImportRoutes(fastify: FastifyInstance) {
     `, [eventId]);
     
     if (result.rows.length === 0) {
-      return reply.code(404).send({ error: 'Budget not found for this event' });
+      // Return empty budget data instead of 404 so frontend can create new
+      return { success: true, data: null };
     }
     
-    return result.rows[0];
+    return { success: true, data: result.rows[0] };
   });
 
   /**
@@ -332,7 +333,7 @@ export async function financialImportRoutes(fastify: FastifyInstance) {
         WHERE eb.event_id = $1
       `, [eventId]);
       
-      return result.rows[0];
+      return { success: true, data: result.rows[0] };
     } catch (error: unknown) {
       const err = error as Error;
       console.error('Budget save error:', err.message, err.stack);
