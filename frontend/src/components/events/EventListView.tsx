@@ -172,7 +172,7 @@ export function EventListView({
             <SortableHeader field="location">Location</SortableHeader>
             <SortableHeader field="status">Status</SortableHeader>
             <TableHead>Ambassadors</TableHead>
-            <SortableHeader field="signupGoal">Signup Goal</SortableHeader>
+            <SortableHeader field="signupGoal">Expected Signups</SortableHeader>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -243,7 +243,7 @@ export function EventListView({
                   )}
                 </TableCell>
 
-                {/* Signup Goal */}
+                {/* Expected Signups */}
                 <TableCell>
                   {event.signupGoal ? (
                     <span className="text-gray-900">{event.signupGoal}</span>
