@@ -55,9 +55,26 @@ function transformKeys(obj: unknown): unknown {
 }
 
 // Transform budget response from snake_case to camelCase EventBudgetData
+// Also converts numeric strings to numbers (PostgreSQL returns DECIMAL as strings)
 function transformBudgetResponse(data: Record<string, unknown> | null | undefined): EventBudgetData | null {
   if (!data) return null;
-  return transformKeys(data) as EventBudgetData;
+  const transformed = transformKeys(data) as Record<string, unknown>;
+  
+  // Convert numeric string fields to numbers
+  const numericFields = [
+    'budgetStaff', 'budgetReimbursements', 'budgetRewards', 'budgetBase',
+    'budgetBonusKickback', 'budgetParking', 'budgetSetup', 'budgetAdditional1',
+    'budgetAdditional2', 'budgetAdditional3', 'budgetAdditional4', 'budgetTotal',
+    'projectedSignups', 'projectedRevenue', 'projectedProfit', 'projectedMarginPercent'
+  ];
+  
+  for (const field of numericFields) {
+    if (transformed[field] !== undefined && transformed[field] !== null) {
+      transformed[field] = parseFloat(String(transformed[field])) || 0;
+    }
+  }
+  
+  return transformed as EventBudgetData;
 }
 
 // Recursively transform object keys from camelCase to snake_case (for sending to API)
