@@ -192,10 +192,21 @@ class SignupService {
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const offset = (page - 1) * limit;
 
-    const [items, countResult] = await Promise.all([
-      db.queryMany<Signup>(
-        `SELECT * FROM signups ${whereClause}
-         ORDER BY created_at DESC
+    const [rawItems, countResult] = await Promise.all([
+      db.queryMany<Signup & { 
+        ambassador_first_name?: string; 
+        ambassador_last_name?: string;
+        operator_name?: string;
+      }>(
+        `SELECT s.*, 
+                a.first_name as ambassador_first_name, 
+                a.last_name as ambassador_last_name,
+                o.name as operator_name
+         FROM signups s
+         LEFT JOIN ambassadors a ON s.ambassador_id = a.id
+         LEFT JOIN operators o ON s.operator_id = o.id
+         ${whereClause}
+         ORDER BY s.created_at DESC
          LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
         [...values, limit, offset]
       ),
@@ -204,6 +215,17 @@ class SignupService {
         values
       ),
     ]);
+
+    // Transform to include nested ambassador and operator objects
+    const items = rawItems.map(item => ({
+      ...item,
+      ambassador: item.ambassadorId ? {
+        id: item.ambassadorId,
+        firstName: item.ambassador_first_name || '',
+        lastName: item.ambassador_last_name || '',
+      } : undefined,
+      operatorName: item.operator_name || undefined,
+    })) as Signup[];
 
     return {
       items,

@@ -82,6 +82,12 @@ export interface SignUp {
   rejectionReason?: string;
   notes?: string;
   createdAt: Date;
+  // Joined fields
+  ambassador?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
 }
 
 export interface EventAssignment {
