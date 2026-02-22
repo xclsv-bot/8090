@@ -78,11 +78,18 @@ export default function SignupsPage() {
     try {
       const { startDate, endDate } = getDateRange();
       
-      const response = await signupsApi.list({
-        startDate,
-        endDate,
-        limit: 500,
-      });
+      // Try with date filter first, fallback to no filter if it fails
+      let response;
+      try {
+        response = await signupsApi.list({
+          startDate,
+          endDate,
+          limit: 500,
+        });
+      } catch {
+        // Fallback: load without date filter
+        response = await signupsApi.list({ limit: 500 });
+      }
       setSignups(response.data || []);
       setTotalSignups(response.meta?.total || response.data?.length || 0);
     } catch (error) {
