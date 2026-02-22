@@ -148,42 +148,42 @@ class SignupService {
     let paramIndex = 1;
 
     if (filters.eventId) {
-      conditions.push(`event_id = $${paramIndex++}`);
+      conditions.push(`s.event_id = $${paramIndex++}`);
       values.push(filters.eventId);
     }
     if (filters.ambassadorId) {
-      conditions.push(`ambassador_id = $${paramIndex++}`);
+      conditions.push(`s.ambassador_id = $${paramIndex++}`);
       values.push(filters.ambassadorId);
     }
     if (filters.operatorId) {
-      conditions.push(`operator_id = $${paramIndex++}`);
+      conditions.push(`s.operator_id = $${paramIndex++}`);
       values.push(filters.operatorId);
     }
     if (filters.status) {
-      conditions.push(`status = $${paramIndex++}`);
+      conditions.push(`s.status = $${paramIndex++}`);
       values.push(filters.status);
     }
     if (filters.validationStatus) {
-      conditions.push(`validation_status = $${paramIndex++}`);
+      conditions.push(`s.validation_status = $${paramIndex++}`);
       values.push(filters.validationStatus);
     }
     if (filters.customerState) {
-      conditions.push(`customer_state = $${paramIndex++}`);
+      conditions.push(`s.customer_state = $${paramIndex++}`);
       values.push(filters.customerState);
     }
     if (filters.fromDate) {
-      conditions.push(`created_at >= $${paramIndex++}`);
+      conditions.push(`s.created_at >= $${paramIndex++}`);
       values.push(filters.fromDate);
     }
     if (filters.toDate) {
-      conditions.push(`created_at <= $${paramIndex++}`);
+      conditions.push(`s.created_at <= $${paramIndex++}`);
       values.push(filters.toDate);
     }
     if (filters.search) {
       conditions.push(`(
-        customer_first_name ILIKE $${paramIndex} OR 
-        customer_last_name ILIKE $${paramIndex} OR 
-        customer_email ILIKE $${paramIndex}
+        s.customer_first_name ILIKE $${paramIndex} OR 
+        s.customer_last_name ILIKE $${paramIndex} OR 
+        s.customer_email ILIKE $${paramIndex}
       )`);
       values.push(`%${filters.search}%`);
       paramIndex++;
