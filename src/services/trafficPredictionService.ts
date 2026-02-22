@@ -225,7 +225,7 @@ class TrafficPredictionService {
         game_date,
         venue->>'city' as city,
         venue->>'state' as state
-       FROM sports_calendar
+       FROM sports_games
        WHERE game_date >= $1 AND game_date <= $2
        ORDER BY game_date ASC`,
       [fromDate.toISOString(), toDate.toISOString()]
