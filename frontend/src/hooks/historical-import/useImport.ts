@@ -10,7 +10,7 @@ import type {
   DataType,
   ValidationMode,
 } from '@/types/import';
-import * as api from '@/lib/api-client';
+import * as api from '@/lib/api';
 
 interface UseImportState {
   isLoading: boolean;

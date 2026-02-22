@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import type { ImportHistoryItem, ImportStats } from '@/types/import';
-import { getImportHistory, getImportStats } from '@/lib/api-client';
+import { getImportHistory, getImportStats } from '@/lib/api';
 import {
   formatRelativeTime,
   formatFileSize,

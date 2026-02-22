@@ -14,7 +14,7 @@ import {
   reconcileImport,
   updateReconciliation,
   executeImport,
-} from '@/lib/api-client';
+} from '@/lib/api';
 
 import { FileUpload } from './FileUpload';
 import { DataPreview } from './DataPreview';

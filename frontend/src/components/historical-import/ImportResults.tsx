@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import type { ImportResult, ImportError } from '@/types/import';
-import { downloadReport } from '@/lib/api-client';
+import { downloadReport } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 interface ImportResultsProps {
