@@ -1,18 +1,11 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import { eventsApi } from '@/lib/api';
+import { useState } from 'react';
 import type { Event } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { useEvents } from '@/hooks/useEvents';
+import { useEventFilters } from '@/hooks/useEventFilters';
 import { Plus, Calendar, List, RefreshCw } from 'lucide-react';
 import {
   EventDuplicateModal,
@@ -22,208 +15,40 @@ import {
   EventListView,
   EventDetailModal,
   SmartEventCreateModal,
-  defaultFilters,
 } from '@/components/events';
-import type { EventFilters } from '@/components/events';
 
 type ViewMode = 'calendar' | 'list';
 
 export default function EventsPage() {
-  // Core state
-  const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
-  const [creating, setCreating] = useState(false);
+  // Data & state from hooks
+  const { events, loading, isConnected, reload, remove, updateStatus } = useEvents();
+  const { filters, setFilters, filteredEvents, uniqueLocations } = useEventFilters(events);
+
+  // UI state
   const [viewMode, setViewMode] = useState<ViewMode>('list');
-  
-  // Filter state
-  const [filters, setFilters] = useState<EventFilters>(defaultFilters);
-  
-  // WebSocket for real-time updates
-  const { subscribe, isConnected } = useWebSocket();
-  
+  const [showCreate, setShowCreate] = useState(false);
+
   // Modal state
   const [duplicateEvent, setDuplicateEvent] = useState<Event | null>(null);
   const [bulkDuplicateEvent, setBulkDuplicateEvent] = useState<Event | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-  
-  // Create form state
-  const [form, setForm] = useState({
-    title: '',
-    description: '',
-    eventDate: '',
-    venue: '',
-    city: '',
-    state: '',
-    status: 'planned',
-  });
 
-  // Load events
-  const loadEvents = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await eventsApi.list();
-      setEvents(res.data || []);
-    } catch (error) {
-      console.error('Failed to load events:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Initial load
-  useEffect(() => {
-    loadEvents();
-  }, [loadEvents]);
-
-  // Real-time updates via WebSocket
-  useEffect(() => {
-    // Subscribe to various event types for real-time updates
-    const unsubUpdated = subscribe('event.updated', () => {
-      console.log('Event updated - refreshing...');
-      loadEvents();
-    });
-    const unsubCreated = subscribe('event.created', () => {
-      console.log('Event created - refreshing...');
-      loadEvents();
-    });
-    const unsubDeleted = subscribe('event.deleted', () => {
-      console.log('Event deleted - refreshing...');
-      loadEvents();
-    });
-    
-    return () => {
-      unsubUpdated();
-      unsubCreated();
-      unsubDeleted();
-    };
-  }, [subscribe, loadEvents]);
-
-  // Extract unique locations for filter dropdown
-  const uniqueLocations = useMemo(() => {
-    const locations = new Set<string>();
-    events.forEach((event) => {
-      if (event.city) {
-        const loc = event.state ? `${event.city}, ${event.state}` : event.city;
-        locations.add(loc);
-      }
-    });
-    return Array.from(locations).sort();
-  }, [events]);
-
-  // Filter events based on current filters
-  const filteredEvents = useMemo(() => {
-    return events.filter((event) => {
-      // Search filter (AC-EM-006.4)
-      if (filters.search) {
-        const search = filters.search.toLowerCase();
-        const matchesTitle = event.title.toLowerCase().includes(search);
-        const matchesVenue = event.venue?.toLowerCase().includes(search) || false;
-        const matchesCity = event.city?.toLowerCase().includes(search) || false;
-        if (!matchesTitle && !matchesVenue && !matchesCity) {
-          return false;
-        }
-      }
-
-      // Status filter (AC-EM-005.4, AC-EM-006.3)
-      if (filters.status && event.status !== filters.status) {
-        return false;
-      }
-
-      // Location filter (AC-EM-005.4, AC-EM-006.3)
-      if (filters.location) {
-        const eventLocation = event.state
-          ? `${event.city}, ${event.state}`
-          : event.city || '';
-        if (eventLocation !== filters.location) {
-          return false;
-        }
-      }
-
-      // Date range filter (AC-EM-006.3)
-      if (filters.startDate) {
-        const eventDate = new Date(event.eventDate);
-        const startDate = new Date(filters.startDate);
-        if (eventDate < startDate) {
-          return false;
-        }
-      }
-      if (filters.endDate) {
-        const eventDate = new Date(event.eventDate);
-        const endDate = new Date(filters.endDate);
-        endDate.setHours(23, 59, 59, 999);
-        if (eventDate > endDate) {
-          return false;
-        }
-      }
-
-      // Ambassador filter (AC-EM-005.4) - would need assignment data
-      // if (filters.ambassadorId) { ... }
-
-      // Compensation type filter (AC-EM-006.3) - would need event compensation data
-      // if (filters.compensationType) { ... }
-
-      return true;
-    });
-  }, [events, filters]);
-
-  // Handle create event
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCreating(true);
-    try {
-      await eventsApi.create({
-        title: form.title,
-        description: form.description || undefined,
-        eventDate: form.eventDate,
-        venue: form.venue || undefined,
-        city: form.city || undefined,
-        state: form.state || undefined,
-        status: form.status as Event['status'],
-      });
-      setShowCreate(false);
-      setForm({
-        title: '',
-        description: '',
-        eventDate: '',
-        venue: '',
-        city: '',
-        state: '',
-        status: 'planned',
-      });
-      loadEvents();
-    } catch (error) {
-      console.error('Failed to create event:', error);
-      alert('Failed to create event');
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  // Handle event click (AC-EM-005.6, AC-EM-006.6)
-  const handleEventClick = (event: Event) => {
-    setSelectedEvent(event);
-  };
-
-  // Handle delete event
+  // Handlers
   const handleDeleteEvent = async (event: Event) => {
     if (!confirm(`Are you sure you want to delete "${event.title}"? This cannot be undone.`)) {
       return;
     }
     try {
-      await eventsApi.delete(event.id);
-      loadEvents();
+      await remove(event.id);
     } catch (error) {
       console.error('Failed to delete event:', error);
       alert('Failed to delete event');
     }
   };
 
-  // Handle status change
   const handleStatusChange = async (event: Event, newStatus: Event['status']) => {
     try {
-      await eventsApi.update(event.id, { status: newStatus });
-      loadEvents();
+      await updateStatus(event.id, newStatus);
     } catch (error) {
       console.error('Failed to update status:', error);
       alert('Failed to update event status');
@@ -239,22 +64,15 @@ export default function EventsPage() {
           <p className="text-gray-600">Manage events and assignments</p>
         </div>
         <div className="flex items-center gap-3">
-          {/* Connection Status */}
-          <Badge
-            className={
-              isConnected ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-            }
-          >
+          <Badge className={isConnected ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}>
             {isConnected ? '● Live' : '○ Offline'}
           </Badge>
-          
-          {/* Refresh Button */}
-          <Button variant="outline" size="sm" onClick={loadEvents} disabled={loading}>
+
+          <Button variant="outline" size="sm" onClick={reload} disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          
-          {/* View Toggle */}
+
           <div className="flex items-center border rounded-lg p-1 bg-gray-100">
             <Button
               variant={viewMode === 'list' ? 'default' : 'ghost'}
@@ -275,8 +93,7 @@ export default function EventsPage() {
               Calendar
             </Button>
           </div>
-          
-          {/* Create Button */}
+
           <Button onClick={() => setShowCreate(true)}>
             <Plus className="mr-2 h-4 w-4" />
             New Event
@@ -285,11 +102,7 @@ export default function EventsPage() {
       </div>
 
       {/* Filters */}
-      <EventFiltersComponent
-        filters={filters}
-        onFiltersChange={setFilters}
-        locations={uniqueLocations}
-      />
+      <EventFiltersComponent filters={filters} onFiltersChange={setFilters} locations={uniqueLocations} />
 
       {/* Results Summary */}
       <div className="mb-4 flex items-center justify-between">
@@ -315,14 +128,11 @@ export default function EventsPage() {
           </Button>
         </div>
       ) : viewMode === 'calendar' ? (
-        <EventCalendar
-          events={filteredEvents}
-          onEventClick={handleEventClick}
-        />
+        <EventCalendar events={filteredEvents} onEventClick={setSelectedEvent} />
       ) : (
         <EventListView
           events={filteredEvents}
-          onEventClick={handleEventClick}
+          onEventClick={setSelectedEvent}
           onDuplicate={setDuplicateEvent}
           onBulkDuplicate={setBulkDuplicateEvent}
           onDelete={handleDeleteEvent}
@@ -330,14 +140,9 @@ export default function EventsPage() {
         />
       )}
 
-      {/* Smart Event Create Modal (WO-94) */}
-      <SmartEventCreateModal
-        open={showCreate}
-        onOpenChange={setShowCreate}
-        onCreated={loadEvents}
-      />
+      {/* Modals */}
+      <SmartEventCreateModal open={showCreate} onOpenChange={setShowCreate} onCreated={reload} />
 
-      {/* Event Detail Modal (AC-EM-005.6, AC-EM-006.6) */}
       <EventDetailModal
         open={!!selectedEvent}
         onOpenChange={(open) => !open && setSelectedEvent(null)}
@@ -352,23 +157,21 @@ export default function EventsPage() {
         }}
       />
 
-      {/* Single Duplicate Modal */}
       {duplicateEvent && (
         <EventDuplicateModal
           open={!!duplicateEvent}
           onOpenChange={(open) => !open && setDuplicateEvent(null)}
           event={duplicateEvent}
-          onSuccess={() => loadEvents()}
+          onSuccess={reload}
         />
       )}
 
-      {/* Bulk Duplicate Modal */}
       {bulkDuplicateEvent && (
         <BulkDuplicateModal
           open={!!bulkDuplicateEvent}
           onOpenChange={(open) => !open && setBulkDuplicateEvent(null)}
           event={bulkDuplicateEvent}
-          onSuccess={() => loadEvents()}
+          onSuccess={reload}
         />
       )}
     </div>

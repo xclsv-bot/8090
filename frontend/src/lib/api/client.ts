@@ -9,9 +9,16 @@
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-// Fail loudly if API URL not configured (except in development)
-if (!API_URL && typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
-  throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
+// AC-100.4: Fail clearly if NEXT_PUBLIC_API_URL not set
+if (!API_URL && typeof window !== 'undefined') {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
+  } else {
+    console.warn(
+      '⚠️ NEXT_PUBLIC_API_URL not set. Using fallback URL.\n' +
+      'Set NEXT_PUBLIC_API_URL in .env.local for proper configuration.'
+    );
+  }
 }
 
 const BASE_URL = API_URL || 'https://xclsv-core-platform.onrender.com';

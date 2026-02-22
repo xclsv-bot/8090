@@ -14,7 +14,10 @@ import {
 } from '@/components/ui/table';
 import { Upload, FileText, AlertCircle, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://xclsv-core-platform.onrender.com';
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+if (!API_URL && typeof window !== 'undefined') {
+  console.error('WO-100: NEXT_PUBLIC_API_URL environment variable is required');
+}
 
 interface ParsedRow {
   rowNumber: number;

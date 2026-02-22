@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 
 type WebSocketMessage = {
   type: string;
@@ -9,7 +9,27 @@ type WebSocketMessage = {
 
 type EventHandler = (data: unknown) => void;
 
-export function useWebSocket(url: string = 'wss://xclsv-core-platform.onrender.com/ws') {
+/**
+ * Derive WebSocket URL from API URL
+ * AC-100.5: WebSocket URL derived from API URL, not hardcoded
+ */
+function getWebSocketUrl(): string {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  
+  if (!apiUrl) {
+    console.warn('NEXT_PUBLIC_API_URL not set, WebSocket disabled');
+    return '';
+  }
+  
+  // Convert http(s):// to ws(s)://
+  const wsUrl = apiUrl
+    .replace('https://', 'wss://')
+    .replace('http://', 'ws://');
+  
+  return `${wsUrl}/ws`;
+}
+
+export function useWebSocket(customUrl?: string) {
   const wsRef = useRef<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const reconnectAttempts = useRef(0);
@@ -17,7 +37,14 @@ export function useWebSocket(url: string = 'wss://xclsv-core-platform.onrender.c
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
   const handlersRef = useRef<Map<string, Set<EventHandler>>>(new Map());
 
+  const url = useMemo(() => customUrl || getWebSocketUrl(), [customUrl]);
+
   const connect = useCallback(() => {
+    if (!url) {
+      console.warn('No WebSocket URL available');
+      return;
+    }
+    
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
     try {
@@ -26,6 +53,7 @@ export function useWebSocket(url: string = 'wss://xclsv-core-platform.onrender.c
       ws.onopen = () => {
         console.log('WebSocket connected');
         setIsConnected(true);
+        reconnectAttempts.current = 0;
       };
 
       ws.onclose = () => {
@@ -114,6 +142,8 @@ export type WebSocketEventType =
   | 'sign_up.submitted'
   | 'sign_up.validated'
   | 'event.updated'
+  | 'event.created'
+  | 'event.deleted'
   | 'ambassador.availability_changed'
   | 'payroll.calculated'
   | 'external_sync.completed';
