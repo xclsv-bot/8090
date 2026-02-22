@@ -235,97 +235,112 @@ export async function financialImportRoutes(fastify: FastifyInstance) {
       notes?: string;
     };
     
-    // Calculate totals
-    const budgetTotal = (body.budgetStaff || 0) + (body.budgetReimbursements || 0) + 
-      (body.budgetRewards || 0) + (body.budgetBase || 0) + (body.budgetBonusKickback || 0) +
-      (body.budgetParking || 0) + (body.budgetSetup || 0) + (body.budgetAdditional1 || 0) +
-      (body.budgetAdditional2 || 0) + (body.budgetAdditional3 || 0) + (body.budgetAdditional4 || 0);
-    
-    const projectedProfit = (body.projectedRevenue || 0) - budgetTotal;
-    
-    // Check if budget exists
-    const existing = await pool.query('SELECT id FROM event_budgets WHERE event_id = $1', [eventId]);
-    
-    if (existing.rows.length > 0) {
-      // Update
-      await pool.query(`
-        UPDATE event_budgets SET
-          budget_staff = $2,
-          budget_reimbursements = $3,
-          budget_rewards = $4,
-          budget_base = $5,
-          budget_bonus_kickback = $6,
-          budget_parking = $7,
-          budget_setup = $8,
-          budget_additional_1 = $9,
-          budget_additional_2 = $10,
-          budget_additional_3 = $11,
-          budget_additional_4 = $12,
-          budget_total = $13,
-          projected_signups = $14,
-          projected_revenue = $15,
-          projected_profit = $16,
-          notes = $17,
-          updated_at = NOW()
-        WHERE event_id = $1
-      `, [
-        eventId,
-        body.budgetStaff || 0,
-        body.budgetReimbursements || 0,
-        body.budgetRewards || 0,
-        body.budgetBase || 0,
-        body.budgetBonusKickback || 0,
-        body.budgetParking || 0,
-        body.budgetSetup || 0,
-        body.budgetAdditional1 || 0,
-        body.budgetAdditional2 || 0,
-        body.budgetAdditional3 || 0,
-        body.budgetAdditional4 || 0,
-        budgetTotal,
-        body.projectedSignups || 0,
-        body.projectedRevenue || 0,
-        projectedProfit,
-        body.notes || null
-      ]);
-    } else {
-      // Insert
-      await pool.query(`
-        INSERT INTO event_budgets (
-          event_id, budget_staff, budget_reimbursements, budget_rewards, budget_base,
-          budget_bonus_kickback, budget_parking, budget_setup, budget_additional_1,
-          budget_additional_2, budget_additional_3, budget_additional_4, budget_total,
-          projected_signups, projected_revenue, projected_profit, notes
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-      `, [
-        eventId,
-        body.budgetStaff || 0,
-        body.budgetReimbursements || 0,
-        body.budgetRewards || 0,
-        body.budgetBase || 0,
-        body.budgetBonusKickback || 0,
-        body.budgetParking || 0,
-        body.budgetSetup || 0,
-        body.budgetAdditional1 || 0,
-        body.budgetAdditional2 || 0,
-        body.budgetAdditional3 || 0,
-        body.budgetAdditional4 || 0,
-        budgetTotal,
-        body.projectedSignups || 0,
-        body.projectedRevenue || 0,
-        projectedProfit,
-        body.notes || null
-      ]);
+    try {
+      // Verify event exists first
+      const eventCheck = await pool.query('SELECT id FROM events WHERE id = $1', [eventId]);
+      if (eventCheck.rows.length === 0) {
+        return reply.code(404).send({ error: 'Event not found' });
+      }
+      
+      // Calculate totals
+      const budgetTotal = (body.budgetStaff || 0) + (body.budgetReimbursements || 0) + 
+        (body.budgetRewards || 0) + (body.budgetBase || 0) + (body.budgetBonusKickback || 0) +
+        (body.budgetParking || 0) + (body.budgetSetup || 0) + (body.budgetAdditional1 || 0) +
+        (body.budgetAdditional2 || 0) + (body.budgetAdditional3 || 0) + (body.budgetAdditional4 || 0);
+      
+      const projectedProfit = (body.projectedRevenue || 0) - budgetTotal;
+      
+      // Check if budget exists
+      const existing = await pool.query('SELECT id FROM event_budgets WHERE event_id = $1', [eventId]);
+      
+      if (existing.rows.length > 0) {
+        // Update
+        await pool.query(`
+          UPDATE event_budgets SET
+            budget_staff = $2,
+            budget_reimbursements = $3,
+            budget_rewards = $4,
+            budget_base = $5,
+            budget_bonus_kickback = $6,
+            budget_parking = $7,
+            budget_setup = $8,
+            budget_additional_1 = $9,
+            budget_additional_2 = $10,
+            budget_additional_3 = $11,
+            budget_additional_4 = $12,
+            budget_total = $13,
+            projected_signups = $14,
+            projected_revenue = $15,
+            projected_profit = $16,
+            notes = $17,
+            updated_at = NOW()
+          WHERE event_id = $1
+        `, [
+          eventId,
+          body.budgetStaff || 0,
+          body.budgetReimbursements || 0,
+          body.budgetRewards || 0,
+          body.budgetBase || 0,
+          body.budgetBonusKickback || 0,
+          body.budgetParking || 0,
+          body.budgetSetup || 0,
+          body.budgetAdditional1 || 0,
+          body.budgetAdditional2 || 0,
+          body.budgetAdditional3 || 0,
+          body.budgetAdditional4 || 0,
+          budgetTotal,
+          body.projectedSignups || 0,
+          body.projectedRevenue || 0,
+          projectedProfit,
+          body.notes || null
+        ]);
+      } else {
+        // Insert
+        await pool.query(`
+          INSERT INTO event_budgets (
+            event_id, budget_staff, budget_reimbursements, budget_rewards, budget_base,
+            budget_bonus_kickback, budget_parking, budget_setup, budget_additional_1,
+            budget_additional_2, budget_additional_3, budget_additional_4, budget_total,
+            projected_signups, projected_revenue, projected_profit, notes
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+        `, [
+          eventId,
+          body.budgetStaff || 0,
+          body.budgetReimbursements || 0,
+          body.budgetRewards || 0,
+          body.budgetBase || 0,
+          body.budgetBonusKickback || 0,
+          body.budgetParking || 0,
+          body.budgetSetup || 0,
+          body.budgetAdditional1 || 0,
+          body.budgetAdditional2 || 0,
+          body.budgetAdditional3 || 0,
+          body.budgetAdditional4 || 0,
+          budgetTotal,
+          body.projectedSignups || 0,
+          body.projectedRevenue || 0,
+          projectedProfit,
+          body.notes || null
+        ]);
+      }
+      
+      // Return updated budget
+      const result = await pool.query(`
+        SELECT eb.*, e.title as event_name, e.event_date as event_date
+        FROM event_budgets eb
+        JOIN events e ON e.id = eb.event_id
+        WHERE eb.event_id = $1
+      `, [eventId]);
+      
+      return result.rows[0];
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error('Budget save error:', err.message, err.stack);
+      return reply.code(500).send({ 
+        error: 'Failed to save budget', 
+        message: err.message 
+      });
     }
-    
-    // Return updated budget
-    const result = await pool.query(`
-      SELECT eb.*, e.title as event_name, e.event_date as event_date
-      FROM event_budgets eb
-      JOIN events e ON e.id = eb.event_id
-      WHERE eb.event_id = $1
-    `, [eventId]);
-    
-    return result.rows[0];
   });
 
   /**
