@@ -146,9 +146,21 @@ export function SmartEventCreateModal({ open, onOpenChange, onCreated }: SmartEv
         })));
       }
 
-      // Process upcoming games as backup suggestions
+      // Process upcoming games - map from API response format
       if (gamesRes.status === 'fulfilled' && gamesRes.value?.data) {
-        setUpcomingGames(gamesRes.value.data.slice(0, 10));
+        const games = gamesRes.value.data.map((g: any) => ({
+          id: g.id,
+          league: g.league,
+          homeTeam: g.homeTeam?.name || g.homeTeam?.shortName || 'TBD',
+          awayTeam: g.awayTeam?.name || g.awayTeam?.shortName || 'TBD',
+          gameDate: g.gameDate,
+          gameTime: g.startTime ? new Date(g.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '',
+          venue: g.venue?.name,
+          city: g.venue?.city || g.homeTeam?.market?.city,
+          state: g.venue?.state || g.homeTeam?.market?.state,
+          broadcast: g.broadcasts?.[0]?.network,
+        }));
+        setUpcomingGames(games.slice(0, 15));
       }
     } catch (error) {
       console.error('Failed to load suggestions:', error);
@@ -223,12 +235,14 @@ export function SmartEventCreateModal({ open, onOpenChange, onCreated }: SmartEv
     return 'bg-red-100 text-red-700';
   };
 
-  // Filter games by region if user has selected one
+  // Filter games by region if user has selected one, otherwise show all
   const filteredGames = upcomingGames.filter(game => {
-    if (!form.region) return true;
+    if (!form.region) return true; // Show all games when no region selected
     const region = form.region.toLowerCase();
     return game.city?.toLowerCase().includes(region) || 
-           game.state?.toLowerCase().includes(region);
+           game.state?.toLowerCase().includes(region) ||
+           game.homeTeam?.toLowerCase().includes(region) ||
+           game.awayTeam?.toLowerCase().includes(region);
   });
 
   return (
@@ -427,11 +441,11 @@ export function SmartEventCreateModal({ open, onOpenChange, onCreated }: SmartEv
                   </>
                 )}
 
-                {suggestions.length === 0 && filteredGames.length === 0 && (
+                {suggestions.length === 0 && filteredGames.length === 0 && !loadingSuggestions && (
                   <div className="text-center py-8 text-gray-400">
                     <Zap className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No suggestions available</p>
-                    <p className="text-xs mt-1">Select a region to see relevant games</p>
+                    <p className="text-sm">No upcoming games found</p>
+                    <p className="text-xs mt-1">Try syncing the sports calendar</p>
                   </div>
                 )}
               </div>
