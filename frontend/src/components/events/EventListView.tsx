@@ -30,6 +30,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Trash2,
+  CheckCircle,
+  PlayCircle,
+  XCircle,
 } from 'lucide-react';
 import type { Event, EventStatus } from '@/types';
 
@@ -39,6 +42,7 @@ interface EventListViewProps {
   onDuplicate?: (event: Event) => void;
   onBulkDuplicate?: (event: Event) => void;
   onDelete?: (event: Event) => void;
+  onStatusChange?: (event: Event, newStatus: EventStatus) => void;
 }
 
 // Sortable columns (AC-EM-006.2)
@@ -61,6 +65,7 @@ export function EventListView({
   onDuplicate,
   onBulkDuplicate,
   onDelete,
+  onStatusChange,
 }: EventListViewProps) {
   // Sorting state (AC-EM-006.2)
   const [sortField, setSortField] = useState<SortField>('eventDate');
@@ -229,15 +234,19 @@ export function EventListView({
                   <Badge className={STATUS_COLORS[event.status]}>{event.status}</Badge>
                 </TableCell>
 
-                {/* Ambassadors (placeholder - would need assignment data) */}
+                {/* Ambassadors */}
                 <TableCell>
-                  <span className="text-gray-400">—</span>
+                  {event.ambassadorCount !== undefined && event.ambassadorCount > 0 ? (
+                    <span className="text-gray-900">{event.ambassadorCount}</span>
+                  ) : (
+                    <span className="text-gray-400">—</span>
+                  )}
                 </TableCell>
 
                 {/* Signup Goal */}
                 <TableCell>
-                  {event.budgetAmount ? (
-                    <span className="text-gray-900">{event.budgetAmount}</span>
+                  {event.signupGoal ? (
+                    <span className="text-gray-900">{event.signupGoal}</span>
                   ) : (
                     <span className="text-gray-400">—</span>
                   )}
@@ -270,6 +279,55 @@ export function EventListView({
                         <Pencil className="mr-2 h-4 w-4" />
                         Edit Event
                       </DropdownMenuItem>
+                      {onStatusChange && (
+                        <>
+                          <DropdownMenuSeparator />
+                          {event.status !== 'confirmed' && (
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onStatusChange(event, 'confirmed');
+                              }}
+                            >
+                              <CheckCircle className="mr-2 h-4 w-4 text-blue-500" />
+                              Mark Confirmed
+                            </DropdownMenuItem>
+                          )}
+                          {event.status !== 'active' && (
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onStatusChange(event, 'active');
+                              }}
+                            >
+                              <PlayCircle className="mr-2 h-4 w-4 text-green-500" />
+                              Mark Active
+                            </DropdownMenuItem>
+                          )}
+                          {event.status !== 'completed' && (
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onStatusChange(event, 'completed');
+                              }}
+                            >
+                              <CheckCircle className="mr-2 h-4 w-4 text-purple-500" />
+                              Mark Completed
+                            </DropdownMenuItem>
+                          )}
+                          {event.status !== 'cancelled' && (
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onStatusChange(event, 'cancelled');
+                              }}
+                            >
+                              <XCircle className="mr-2 h-4 w-4 text-red-500" />
+                              Cancel Event
+                            </DropdownMenuItem>
+                          )}
+                        </>
+                      )}
                       {(onDuplicate || onBulkDuplicate) && <DropdownMenuSeparator />}
                       {onDuplicate && (
                         <DropdownMenuItem

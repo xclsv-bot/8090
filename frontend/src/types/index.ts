@@ -19,6 +19,8 @@ export interface Event {
   projectedRevenue?: number;
   actualRevenue?: number;
   notes?: string;
+  signupGoal?: number;
+  ambassadorCount?: number;
   createdAt: string;
   updatedAt: string;
 }

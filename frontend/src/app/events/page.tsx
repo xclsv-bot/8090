@@ -219,6 +219,17 @@ export default function EventsPage() {
     }
   };
 
+  // Handle status change
+  const handleStatusChange = async (event: Event, newStatus: Event['status']) => {
+    try {
+      await eventsApi.update(event.id, { status: newStatus });
+      loadEvents();
+    } catch (error) {
+      console.error('Failed to update status:', error);
+      alert('Failed to update event status');
+    }
+  };
+
   return (
     <div className="p-8">
       {/* Header */}
@@ -315,6 +326,7 @@ export default function EventsPage() {
           onDuplicate={setDuplicateEvent}
           onBulkDuplicate={setBulkDuplicateEvent}
           onDelete={handleDeleteEvent}
+          onStatusChange={handleStatusChange}
         />
       )}
 

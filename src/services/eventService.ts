@@ -277,37 +277,37 @@ class EventService {
     let paramIndex = 1;
 
     if (filters.status) {
-      conditions.push(`status = $${paramIndex++}`);
+      conditions.push(`e.status = $${paramIndex++}`);
       values.push(filters.status);
     }
 
     if (filters.eventType) {
-      conditions.push(`event_type = $${paramIndex++}`);
+      conditions.push(`e.event_type = $${paramIndex++}`);
       values.push(filters.eventType);
     }
 
     if (filters.region) {
-      conditions.push(`region = $${paramIndex++}`);
+      conditions.push(`e.region = $${paramIndex++}`);
       values.push(filters.region);
     }
 
     if (filters.state) {
-      conditions.push(`state = $${paramIndex++}`);
+      conditions.push(`e.state = $${paramIndex++}`);
       values.push(filters.state);
     }
 
     if (filters.fromDate) {
-      conditions.push(`event_date >= $${paramIndex++}`);
+      conditions.push(`e.event_date >= $${paramIndex++}`);
       values.push(filters.fromDate);
     }
 
     if (filters.toDate) {
-      conditions.push(`event_date <= $${paramIndex++}`);
+      conditions.push(`e.event_date <= $${paramIndex++}`);
       values.push(filters.toDate);
     }
 
     if (filters.search) {
-      conditions.push(`(title ILIKE $${paramIndex} OR venue ILIKE $${paramIndex} OR city ILIKE $${paramIndex})`);
+      conditions.push(`(e.title ILIKE $${paramIndex} OR e.venue ILIKE $${paramIndex} OR e.city ILIKE $${paramIndex})`);
       values.push(`%${filters.search}%`);
       paramIndex++;
     }
@@ -317,13 +317,15 @@ class EventService {
 
     const [items, countResult] = await Promise.all([
       db.queryMany<EventExtended>(
-        `SELECT * FROM events ${whereClause}
-         ORDER BY event_date DESC, start_time ASC
+        `SELECT e.*, 
+         (SELECT COUNT(*) FROM event_assignments ea WHERE ea.event_id = e.id) as ambassador_count
+         FROM events e ${whereClause}
+         ORDER BY e.event_date DESC, e.start_time ASC
          LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
         [...values, limit, offset]
       ),
       db.queryOne<{ count: string }>(
-        `SELECT COUNT(*) as count FROM events ${whereClause}`,
+        `SELECT COUNT(*) as count FROM events e ${whereClause}`,
         values
       ),
     ]);
