@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowLeft, Calendar, MapPin, Users, Copy, CalendarRange } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, Copy, CalendarRange, Trash2 } from 'lucide-react';
 import { EventDuplicateModal, BulkDuplicateModal, EventBudgetSection, AmbassadorAssignmentSection } from '@/components/events';
 
 const statusColors: Record<string, string> = {
@@ -36,6 +36,23 @@ export default function EventDetailPage() {
   // Duplicate modal state
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [showBulkDuplicateModal, setShowBulkDuplicateModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    if (!event) return;
+    if (!confirm(`Are you sure you want to delete "${event.title}"? This cannot be undone.`)) return;
+    
+    setDeleting(true);
+    try {
+      await eventsApi.delete(event.id);
+      router.push('/events');
+    } catch (error) {
+      console.error('Failed to delete event:', error);
+      alert('Failed to delete event');
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   const loadData = useCallback(async () => {
     try {
@@ -248,6 +265,17 @@ export default function EventDetailPage() {
                 >
                   <CalendarRange className="mr-2 h-4 w-4" />
                   Bulk Duplicate
+                </Button>
+              </div>
+              <div className="border-t pt-2 mt-2">
+                <Button 
+                  className="w-full" 
+                  variant="destructive"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {deleting ? 'Deleting...' : 'Delete Event'}
                 </Button>
               </div>
             </div>
