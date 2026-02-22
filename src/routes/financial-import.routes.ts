@@ -243,13 +243,14 @@ export async function financialImportRoutes(fastify: FastifyInstance) {
         return reply.code(404).send({ error: 'Event not found' });
       }
       
-      // Calculate totals
-      const budgetTotal = (body.budgetStaff || 0) + (body.budgetReimbursements || 0) + 
-        (body.budgetRewards || 0) + (body.budgetBase || 0) + (body.budgetBonusKickback || 0) +
-        (body.budgetParking || 0) + (body.budgetSetup || 0) + (body.budgetAdditional1 || 0) +
-        (body.budgetAdditional2 || 0) + (body.budgetAdditional3 || 0) + (body.budgetAdditional4 || 0);
+      // Calculate totals - use Number() to handle string inputs from JSON
+      const toNum = (v: unknown) => Number(v) || 0;
+      const budgetTotal = toNum(body.budgetStaff) + toNum(body.budgetReimbursements) + 
+        toNum(body.budgetRewards) + toNum(body.budgetBase) + toNum(body.budgetBonusKickback) +
+        toNum(body.budgetParking) + toNum(body.budgetSetup) + toNum(body.budgetAdditional1) +
+        toNum(body.budgetAdditional2) + toNum(body.budgetAdditional3) + toNum(body.budgetAdditional4);
       
-      const projectedProfit = (body.projectedRevenue || 0) - budgetTotal;
+      const projectedProfit = toNum(body.projectedRevenue) - budgetTotal;
       
       // Check if budget exists
       const existing = await pool.query('SELECT id FROM event_budgets WHERE event_id = $1', [eventId]);
@@ -278,20 +279,20 @@ export async function financialImportRoutes(fastify: FastifyInstance) {
           WHERE event_id = $1
         `, [
           eventId,
-          body.budgetStaff || 0,
-          body.budgetReimbursements || 0,
-          body.budgetRewards || 0,
-          body.budgetBase || 0,
-          body.budgetBonusKickback || 0,
-          body.budgetParking || 0,
-          body.budgetSetup || 0,
-          body.budgetAdditional1 || 0,
-          body.budgetAdditional2 || 0,
-          body.budgetAdditional3 || 0,
-          body.budgetAdditional4 || 0,
+          toNum(body.budgetStaff),
+          toNum(body.budgetReimbursements),
+          toNum(body.budgetRewards),
+          toNum(body.budgetBase),
+          toNum(body.budgetBonusKickback),
+          toNum(body.budgetParking),
+          toNum(body.budgetSetup),
+          toNum(body.budgetAdditional1),
+          toNum(body.budgetAdditional2),
+          toNum(body.budgetAdditional3),
+          toNum(body.budgetAdditional4),
           budgetTotal,
-          body.projectedSignups || 0,
-          body.projectedRevenue || 0,
+          toNum(body.projectedSignups),
+          toNum(body.projectedRevenue),
           projectedProfit,
           body.notes || null
         ]);
@@ -306,20 +307,20 @@ export async function financialImportRoutes(fastify: FastifyInstance) {
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
         `, [
           eventId,
-          body.budgetStaff || 0,
-          body.budgetReimbursements || 0,
-          body.budgetRewards || 0,
-          body.budgetBase || 0,
-          body.budgetBonusKickback || 0,
-          body.budgetParking || 0,
-          body.budgetSetup || 0,
-          body.budgetAdditional1 || 0,
-          body.budgetAdditional2 || 0,
-          body.budgetAdditional3 || 0,
-          body.budgetAdditional4 || 0,
+          toNum(body.budgetStaff),
+          toNum(body.budgetReimbursements),
+          toNum(body.budgetRewards),
+          toNum(body.budgetBase),
+          toNum(body.budgetBonusKickback),
+          toNum(body.budgetParking),
+          toNum(body.budgetSetup),
+          toNum(body.budgetAdditional1),
+          toNum(body.budgetAdditional2),
+          toNum(body.budgetAdditional3),
+          toNum(body.budgetAdditional4),
           budgetTotal,
-          body.projectedSignups || 0,
-          body.projectedRevenue || 0,
+          toNum(body.projectedSignups),
+          toNum(body.projectedRevenue),
           projectedProfit,
           body.notes || null
         ]);
@@ -329,7 +330,7 @@ export async function financialImportRoutes(fastify: FastifyInstance) {
       if (body.projectedSignups !== undefined) {
         await pool.query(
           'UPDATE events SET signup_goal = $1, updated_at = NOW() WHERE id = $2',
-          [body.projectedSignups || 0, eventId]
+          [toNum(body.projectedSignups), eventId]
         );
       }
       
