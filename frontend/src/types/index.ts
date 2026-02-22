@@ -342,6 +342,7 @@ export interface PayrollAdjustment {
 export interface EventBudgetData {
   id?: string;
   eventId?: string;
+  // Budget fields
   budgetStaff?: number;
   budgetReimbursements?: number;
   budgetRewards?: number;
@@ -358,6 +359,20 @@ export interface EventBudgetData {
   projectedRevenue?: number;
   projectedProfit?: number;
   notes?: string;
+  // Actuals fields (for completed events)
+  actualSignups?: number;
+  actualRevenue?: number;
+  actualStaff?: number;
+  actualReimbursements?: number;
+  actualRewards?: number;
+  actualBase?: number;
+  actualBonusKickback?: number;
+  actualParking?: number;
+  actualSetup?: number;
+  actualAdditional1?: number;
+  actualAdditional2?: number;
+  actualAdditional3?: number;
+  actualTotal?: number;
 }
 
 export interface EventBudget {
