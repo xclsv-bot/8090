@@ -258,14 +258,28 @@ export function SmartEventCreateModal({ open, onOpenChange, onCreated }: SmartEv
     return 'bg-red-100 text-red-700';
   };
 
-  // Filter games by region if user has selected one, otherwise show all
+  // Filter games by date and region
   const filteredGames = upcomingGames.filter(game => {
-    if (!form.region) return true; // Show all games when no region selected
-    const region = form.region.toLowerCase();
-    return game.city?.toLowerCase().includes(region) || 
-           game.state?.toLowerCase().includes(region) ||
-           game.homeTeam?.toLowerCase().includes(region) ||
-           game.awayTeam?.toLowerCase().includes(region);
+    // Filter by date if selected (+/- 1 day)
+    if (form.eventDate && game.gameDate) {
+      const selectedDate = new Date(form.eventDate);
+      const gameDate = new Date(game.gameDate);
+      const dayDiff = Math.abs((gameDate.getTime() - selectedDate.getTime()) / (1000 * 60 * 60 * 24));
+      if (dayDiff > 1) return false; // Only show games within 1 day of selected date
+    }
+    
+    // Filter by region if selected
+    if (form.region) {
+      const region = form.region.toLowerCase();
+      const matchesRegion = 
+        game.city?.toLowerCase().includes(region) || 
+        game.state?.toLowerCase().includes(region) ||
+        game.homeTeam?.toLowerCase().includes(region) ||
+        game.awayTeam?.toLowerCase().includes(region);
+      if (!matchesRegion) return false;
+    }
+    
+    return true;
   });
 
   return (
@@ -479,7 +493,8 @@ export function SmartEventCreateModal({ open, onOpenChange, onCreated }: SmartEv
                   <>
                     <p className="text-xs text-gray-500 mt-4 flex items-center gap-1">
                       <Trophy className="h-3 w-3" />
-                      Upcoming games {form.region && `in ${form.region}`}
+                      Games {form.eventDate && `on ${new Date(form.eventDate).toLocaleDateString()}`} {form.region && `in ${form.region}`}
+                      {!form.eventDate && !form.region && '(select date/region to filter)'}
                     </p>
                     {filteredGames.slice(0, 5).map((game) => (
                       <Card
