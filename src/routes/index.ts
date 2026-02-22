@@ -16,6 +16,7 @@ import { payStatementsRoutes } from './pay-statements.js';
 import { integrationRoutes } from './integrations.js';
 import { financialRoutes } from './financial.js';
 import { financialImportRoutes } from './financial-import.routes.js';
+import { historicalSignupImportRoutes } from './historical-signup-import.routes.js';
 import { signupImportRoutes } from './imports/signups.js';
 import { budgetAllocationRoutes } from './budget-allocations.js';
 import { operatorRoutes } from './operators.js';
@@ -64,6 +65,7 @@ export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
   await fastify.register(integrationRoutes, { prefix: '/api/v1/integrations' });
   await fastify.register(financialRoutes, { prefix: '/api/v1/financial' });
   await fastify.register(financialImportRoutes, { prefix: '/api/v1' });
+  await fastify.register(historicalSignupImportRoutes, { prefix: '/api/v1' });
   await fastify.register(signupImportRoutes, { prefix: '/api/v1/imports/signups' });
   await fastify.register(budgetAllocationRoutes, { prefix: '/api/v1/budget-allocations' });
   await fastify.register(operatorRoutes, { prefix: '/api/v1/operators' });
