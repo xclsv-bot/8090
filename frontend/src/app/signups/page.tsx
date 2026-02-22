@@ -125,6 +125,15 @@ export default function SignupsPage() {
 
   // Filter signups
   const filteredSignups = signups.filter(signup => {
+    // Date filter (client-side fallback when backend filter fails)
+    if (signup.submittedAt) {
+      const { startDate, endDate } = getDateRange();
+      const signupDate = signup.submittedAt.split('T')[0];
+      if (signupDate < startDate || signupDate > endDate) {
+        return false;
+      }
+    }
+    
     // Search filter
     if (search) {
       const searchLower = search.toLowerCase();
