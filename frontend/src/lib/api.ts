@@ -406,8 +406,8 @@ export const signupsApi = {
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== '') {
-          if (key === 'startDate') queryParams.fromDate = value;
-          else if (key === 'endDate') queryParams.toDate = value;
+          if (key === 'startDate') queryParams.fromDate = String(value);
+          else if (key === 'endDate') queryParams.toDate = String(value);
           else queryParams[key] = String(value);
         }
       });
