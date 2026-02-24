@@ -22,3 +22,6 @@ export { SmartEventCreateModal } from './SmartEventCreateModal';
 
 // Historical Import
 export { HistoricalImportSection } from './HistoricalImportSection';
+
+// Venue History
+export { VenueHistoryCard } from './VenueHistoryCard';

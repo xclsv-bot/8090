@@ -24,6 +24,7 @@ import {
   Trophy,
   Tv,
 } from 'lucide-react';
+import { VenueHistoryCard } from './VenueHistoryCard';
 
 interface SmartEventCreateModalProps {
   open: boolean;
@@ -372,6 +373,13 @@ export function SmartEventCreateModal({ open, onOpenChange, onCreated }: SmartEv
                     >
                       ← Back to venue list
                     </Button>
+                  </div>
+                )}
+
+                {/* Venue History Card - shows when venue is selected */}
+                {form.venueId && !showNewVenue && (
+                  <div className="mt-3">
+                    <VenueHistoryCard venueId={form.venueId} />
                   </div>
                 )}
               </div>
