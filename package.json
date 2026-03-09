@@ -9,6 +9,7 @@
     "start": "node dist/index.js",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:phase2": "vitest run src/tests/phase2",
     "test:wo65": "vitest run src/services/integration/__tests__/wo65.test.ts",
     "lint": "eslint src --ext .ts",
     "format": "prettier --write src/**/*.ts"
