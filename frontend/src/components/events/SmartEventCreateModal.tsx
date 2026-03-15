@@ -294,7 +294,7 @@ export function SmartEventCreateModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-yellow-500" />
@@ -302,9 +302,9 @@ export function SmartEventCreateModal({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-5 gap-6">
           {/* Left Panel - Form */}
-          <div className="overflow-y-auto pr-2">
+          <div className="md:col-span-2 overflow-y-auto pr-2">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="text-sm font-medium">Event Title *</label>
@@ -459,7 +459,7 @@ export function SmartEventCreateModal({
           </div>
 
           {/* Right Panel - Suggestions */}
-          <div className="overflow-y-auto border-l pl-4">
+          <div className="md:col-span-3 overflow-y-auto border-l pl-6">
             <div className="flex items-center gap-2 mb-3">
               <TrendingUp className="h-4 w-4 text-blue-500" />
               <h3 className="font-medium text-sm">AI Suggestions</h3>
