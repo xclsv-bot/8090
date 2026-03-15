@@ -2,6 +2,7 @@ import { z } from 'zod';
 import dotenv from 'dotenv';
 import { existsSync } from 'fs';
 import { join } from 'path';
+import { validateSecrets } from './secrets.js';
 
 // Load .env.local first if it exists, then .env
 const envLocalPath = join(process.cwd(), '.env.local');
@@ -61,6 +62,10 @@ const envSchema = z.object({
 
   // Logging
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+
+  // Secrets Management
+  SECRET_PROVIDER: z.enum(['render', 'aws', 'local']).default('render'),
+  SECRETS_CACHE_TTL_MS: z.string().default('60000').transform(Number),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -72,5 +77,19 @@ if (!parsed.success) {
 }
 
 export const env = parsed.data;
+
+export function validateCriticalSecrets(): void {
+  try {
+    validateSecrets({
+      provider: env.SECRET_PROVIDER,
+      nodeEnv: env.NODE_ENV,
+      throwOnError: true,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown secrets validation error';
+    console.error(`❌ Secrets validation failed: ${message}`);
+    process.exit(1);
+  }
+}
 
 export type Env = z.infer<typeof envSchema>;

@@ -38,6 +38,7 @@ const WO133_MIGRATIONS = [
   '004_update_signup_table.sql',
   '005_create_payroll_tables.sql',
   '006_create_availability_tables.sql',
+  '124_secrets_audit_log.sql',
 ] as const;
 
 export type MigrationDirection = 'up' | 'down';

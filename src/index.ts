@@ -1,5 +1,5 @@
 import { buildApp } from './app.js';
-import { env } from './config/env.js';
+import { env, validateCriticalSecrets } from './config/env.js';
 import { connectDatabase, closeDatabase } from './config/database.js';
 import { logger } from './utils/logger.js';
 import { startTokenRefreshService, stopTokenRefreshService } from './services/oauth/token-refresh.service.js';
@@ -8,6 +8,7 @@ async function main() {
   try {
     // Connect to database
     await connectDatabase();
+    validateCriticalSecrets();
 
     // Build and start server
     const app = await buildApp();
