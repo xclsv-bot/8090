@@ -6,9 +6,9 @@ import { startTokenRefreshService, stopTokenRefreshService } from './services/oa
 
 async function main() {
   try {
-    // Connect to database
-    await connectDatabase();
+    // Validate critical secrets before establishing external connections.
     validateCriticalSecrets();
+    await connectDatabase();
 
     // Build and start server
     const app = await buildApp();
