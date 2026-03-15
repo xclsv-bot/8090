@@ -23,6 +23,16 @@ const envSchema = z.object({
 
   // Database
   DATABASE_URL: z.string().url(),
+  DB_POOL_MAX: z.string().optional().transform((value) => value ? Number(value) : undefined),
+  DB_POOL_MIN: z.string().optional().transform((value) => value ? Number(value) : undefined),
+  DB_POOL_IDLE_TIMEOUT_MS: z.string().optional().transform((value) => value ? Number(value) : undefined),
+  DB_POOL_CONNECTION_TIMEOUT_MS: z.string().optional().transform((value) => value ? Number(value) : undefined),
+  DB_POOL_QUERY_TIMEOUT_MS: z.string().optional().transform((value) => value ? Number(value) : undefined),
+  DB_QUERY_RETRY_ATTEMPTS: z.string().optional().transform((value) => value ? Number(value) : undefined),
+  DB_QUERY_RETRY_BACKOFF_MS: z.string().optional().transform((value) => value ? Number(value) : undefined),
+
+  // Redis
+  REDIS_URL: z.string().url().optional().default('redis://localhost:6379'),
 
   // Clerk Auth (optional for initial deployment)
   CLERK_SECRET_KEY: z.string().optional().default(''),

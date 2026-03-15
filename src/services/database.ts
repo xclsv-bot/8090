@@ -1,5 +1,6 @@
 import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 import { pool } from '../config/database.js';
+import { checkDatabaseHealth, queryWithRetry } from '../db/connection-pool.js';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -21,7 +22,7 @@ export class DatabaseService {
   ): Promise<QueryResult<T>> {
     const start = Date.now();
     try {
-      const result = await this.pool.query<T>(text, params);
+      const result = await queryWithRetry<T>(text, params);
       const duration = Date.now() - start;
       
       logger.debug(
@@ -84,12 +85,7 @@ export class DatabaseService {
    * Check database health
    */
   async healthCheck(): Promise<boolean> {
-    try {
-      const result = await this.queryOne<{ now: Date }>('SELECT NOW()');
-      return result !== null;
-    } catch {
-      return false;
-    }
+    return checkDatabaseHealth();
   }
 }
 

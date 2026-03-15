@@ -1,0 +1,60 @@
+service: xclsv-core-platform-backend
+platform:
+  primary: render
+  secondary: aws-ecs-fargate
+
+resources:
+  cpu: 0.5 vCPU
+  memory: 1024 MiB
+
+instance_bounds:
+  min_instances: 2
+  max_instances: 12
+  desired_instances: 2
+
+target_tracking:
+  cpu:
+    target_utilization_percent: 65
+    scale_out_cooldown_seconds: 120
+    scale_in_cooldown_seconds: 300
+  memory:
+    target_utilization_percent: 70
+    scale_out_cooldown_seconds: 120
+    scale_in_cooldown_seconds: 300
+
+step_scaling:
+  scale_up:
+    - when:
+        cpu_percent_gte: 80
+        duration_seconds: 180
+      change_in_capacity: +2
+    - when:
+        cpu_percent_gte: 90
+        duration_seconds: 120
+      change_in_capacity: +3
+  scale_down:
+    - when:
+        cpu_percent_lte: 35
+        memory_percent_lte: 40
+        duration_seconds: 600
+      change_in_capacity: -1
+
+slo_guards:
+  p95_latency_ms: 400
+  error_rate_percent: 1.0
+
+load_test_thresholds:
+  baseline_rps: 120
+  scale_up_trigger_rps: 350
+  spike_rps: 600
+
+alerts:
+  - name: high_cpu_sustained
+    condition: cpu_utilization_percent >= 85 for 5m
+    severity: warning
+  - name: unhealthy_instances
+    condition: healthy_instance_count < 2 for 2m
+    severity: critical
+  - name: high_error_rate
+    condition: http_5xx_percent >= 2 for 5m
+    severity: critical

@@ -1,0 +1,86 @@
+version: '3.9'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: xclsv-backend
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOST: 0.0.0.0
+      DATABASE_URL: postgresql://xclsv:xclsv@postgres:5432/xclsv_core
+      REDIS_URL: redis://redis:6379
+      DB_POOL_MAX: 25
+      DB_POOL_MIN: 2
+      DB_POOL_IDLE_TIMEOUT_MS: 30000
+      DB_POOL_CONNECTION_TIMEOUT_MS: 10000
+      DB_POOL_QUERY_TIMEOUT_MS: 15000
+      DB_QUERY_RETRY_ATTEMPTS: 3
+      DB_QUERY_RETRY_BACKOFF_MS: 200
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
+      CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-xclsv-core-platform}
+      AI_VISION_API_URL: ${AI_VISION_API_URL:-}
+      AI_VISION_API_KEY: ${AI_VISION_API_KEY:-mock}
+      CUSTOMERIO_SITE_ID: ${CUSTOMERIO_SITE_ID:-}
+      CUSTOMERIO_API_KEY: ${CUSTOMERIO_API_KEY:-}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-60000}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3000/health/live').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: xclsv-postgres
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_DB: xclsv_core
+      POSTGRES_USER: xclsv
+      POSTGRES_PASSWORD: xclsv
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U xclsv -d xclsv_core']
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: xclsv-redis
+    ports:
+      - '6379:6379'
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
