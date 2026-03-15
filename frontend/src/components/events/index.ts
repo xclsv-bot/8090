@@ -25,3 +25,9 @@ export { HistoricalImportSection } from './HistoricalImportSection';
 
 // Venue History
 export { VenueHistoryCard } from './VenueHistoryCard';
+
+// Traffic Intelligence (WO-135)
+export { GameScheduleDisplay } from './GameScheduleDisplay';
+export { VenueRecommendations } from './VenueRecommendations';
+export { DateTimeRecommendations } from './DateTimeRecommendations';
+export { ContextualAlerts } from './ContextualAlerts';

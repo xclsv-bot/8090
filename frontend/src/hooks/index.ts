@@ -9,3 +9,4 @@ export { useSignups } from './useSignups';
 export { useSignupFilters } from './useSignupFilters';
 export { usePayroll } from './usePayroll';
 export { useWebSocket } from './useWebSocket';
+export { useTrafficPrediction } from "./useTrafficPrediction";
