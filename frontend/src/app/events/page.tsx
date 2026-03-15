@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
 import type { Event } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useEvents } from '@/hooks/useEvents';
 import { useEventFilters } from '@/hooks/useEventFilters';
 import { Plus, Calendar, List, RefreshCw } from 'lucide-react';
+import { eventsApi } from '@/lib/api';
 import {
   EventDuplicateModal,
   BulkDuplicateModal,
@@ -18,20 +20,53 @@ import {
 } from '@/components/events';
 
 type ViewMode = 'calendar' | 'list';
+type ToastState = { type: 'success' | 'error'; message: string } | null;
+
+function extractUserRole(sessionClaims: unknown): string | undefined {
+  if (!sessionClaims || typeof sessionClaims !== 'object') return undefined;
+  const claims = sessionClaims as Record<string, unknown>;
+  const metadata = claims.metadata && typeof claims.metadata === 'object'
+    ? claims.metadata as Record<string, unknown>
+    : undefined;
+  const publicMetadata = claims.public_metadata && typeof claims.public_metadata === 'object'
+    ? claims.public_metadata as Record<string, unknown>
+    : undefined;
+  const unsafeMetadata = claims.unsafe_metadata && typeof claims.unsafe_metadata === 'object'
+    ? claims.unsafe_metadata as Record<string, unknown>
+    : undefined;
+
+  const role = claims.role
+    || metadata?.role
+    || publicMetadata?.role
+    || unsafeMetadata?.role;
+
+  return typeof role === 'string' ? role.toLowerCase() : undefined;
+}
 
 export default function EventsPage() {
   // Data & state from hooks
   const { events, loading, isConnected, reload, remove, updateStatus } = useEvents();
   const { filters, setFilters, filteredEvents, uniqueLocations } = useEventFilters(events);
+  const { sessionClaims } = useAuth();
 
   // UI state
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [showCreate, setShowCreate] = useState(false);
+  const [syncingGames, setSyncingGames] = useState(false);
+  const [toast, setToast] = useState<ToastState>(null);
+  const [suggestionsRefreshKey, setSuggestionsRefreshKey] = useState(0);
 
   // Modal state
   const [duplicateEvent, setDuplicateEvent] = useState<Event | null>(null);
   const [bulkDuplicateEvent, setBulkDuplicateEvent] = useState<Event | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const isAdmin = useMemo(() => extractUserRole(sessionClaims) === 'admin', [sessionClaims]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timeout = window.setTimeout(() => setToast(null), 3500);
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
 
   // Handlers
   const handleDeleteEvent = async (event: Event) => {
@@ -55,8 +90,46 @@ export default function EventsPage() {
     }
   };
 
+  const handleSyncGames = async () => {
+    setSyncingGames(true);
+    setToast(null);
+
+    try {
+      const response = await eventsApi.syncSportsCalendar();
+      const summary = response.data?.summary;
+      const syncedGames = summary?.totalGamesCreated ?? 0;
+      const updatedGames = summary?.totalGamesUpdated ?? 0;
+
+      setToast({
+        type: 'success',
+        message: `Sync complete. Created ${syncedGames} and updated ${updatedGames} games.`,
+      });
+      setSuggestionsRefreshKey(prev => prev + 1);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to sync games';
+      console.error('Failed to sync sports calendar:', error);
+      setToast({ type: 'error', message });
+    } finally {
+      setSyncingGames(false);
+    }
+  };
+
   return (
     <div className="p-8">
+      {toast && (
+        <div
+          className={`fixed top-4 right-4 z-50 rounded-md border px-4 py-3 text-sm shadow-lg ${
+            toast.type === 'success'
+              ? 'border-green-200 bg-green-50 text-green-800'
+              : 'border-red-200 bg-red-50 text-red-800'
+          }`}
+          role="status"
+          aria-live="polite"
+        >
+          {toast.message}
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
@@ -72,6 +145,13 @@ export default function EventsPage() {
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
+
+          {isAdmin && (
+            <Button variant="outline" size="sm" onClick={handleSyncGames} disabled={syncingGames}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${syncingGames ? 'animate-spin' : ''}`} />
+              {syncingGames ? 'Syncing...' : 'Sync Games'}
+            </Button>
+          )}
 
           <div className="flex items-center border rounded-lg p-1 bg-gray-100">
             <Button
@@ -141,7 +221,12 @@ export default function EventsPage() {
       )}
 
       {/* Modals */}
-      <SmartEventCreateModal open={showCreate} onOpenChange={setShowCreate} onCreated={reload} />
+      <SmartEventCreateModal
+        open={showCreate}
+        onOpenChange={setShowCreate}
+        onCreated={reload}
+        suggestionsRefreshKey={suggestionsRefreshKey}
+      />
 
       <EventDetailModal
         open={!!selectedEvent}

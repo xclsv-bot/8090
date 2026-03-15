@@ -220,8 +220,11 @@ class SportsCalendarService {
           }
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
+          const externalId = event && typeof event === 'object' && 'id' in event
+            ? String((event as { id?: string }).id || '')
+            : undefined;
           errors.push({
-            externalId: event.id,
+            externalId,
             message: errorMessage,
             code: 'GAME_PROCESS_ERROR',
             retryable: false,
@@ -260,11 +263,6 @@ class SportsCalendarService {
   private async fetchESPNSchedule(league: SportsLeague, startDate: string, endDate: string): Promise<ESPNEvent[]> {
     const leagueConfig = ESPN_LEAGUES[league];
     const url = `${this.espnBaseUrl}/${leagueConfig.sport}/${leagueConfig.league}/scoreboard`;
-    
-    // ESPN uses dates param for filtering
-    const params = new URLSearchParams({
-      dates: startDate.replace(/-/g, ''),
-    });
 
     // For date ranges, we need to fetch multiple days
     const events: ESPNEvent[] = [];
@@ -295,8 +293,10 @@ class SportsCalendarService {
         }
 
         const data = await response.json() as ESPNScoreboardResponse;
-        if (data.events) {
-          events.push(...data.events);
+        if (Array.isArray(data.events)) {
+          events.push(...data.events.filter((event): event is ESPNEvent => Boolean(event)));
+        } else {
+          logger.warn({ league, date }, 'ESPN response missing events array');
         }
 
         // Rate limit protection
@@ -314,15 +314,28 @@ class SportsCalendarService {
    * Map ESPN event to our SportsGame type
    */
   private mapESPNEventToGame(event: ESPNEvent, league: SportsLeague): Omit<SportsGame, 'id' | 'createdAt' | 'updatedAt'> {
-    const competition = event.competitions[0];
-    const homeCompetitor = competition.competitors.find(c => c.homeAway === 'home')!;
-    const awayCompetitor = competition.competitors.find(c => c.homeAway === 'away')!;
+    if (!event?.id || !event?.date || !event?.season || !event?.status?.type) {
+      throw new Error('Invalid ESPN event: missing id/date/season/status');
+    }
+
+    const competition = event.competitions?.[0];
+    if (!competition) {
+      throw new Error(`Invalid ESPN event ${event.id}: missing competition`);
+    }
+
+    const competitors = Array.isArray(competition.competitors) ? competition.competitors : [];
+    const homeCompetitor = competitors.find(c => c?.homeAway === 'home' && c?.team?.id);
+    const awayCompetitor = competitors.find(c => c?.homeAway === 'away' && c?.team?.id);
+
+    if (!homeCompetitor || !awayCompetitor) {
+      throw new Error(`Invalid ESPN event ${event.id}: missing home/away competitor`);
+    }
 
     const homeTeam = this.mapESPNTeam(homeCompetitor, league);
     const awayTeam = this.mapESPNTeam(awayCompetitor, league);
     const venue = this.mapESPNVenue(competition);
     const broadcasts = this.mapESPNBroadcasts(competition);
-    const status = this.mapESPNStatus(event.status.type.state, event.status.type.completed);
+    const status = this.mapESPNStatus(event.status.type.state || 'pre', Boolean(event.status.type.completed));
     const gameType = this.mapESPNSeasonType(event.season.type);
     const relevanceFlags = this.calculateRelevanceFlags(event, venue, broadcasts);
 
@@ -338,13 +351,13 @@ class SportsCalendarService {
       week: event.week?.number,
       homeTeam,
       awayTeam,
-      gameDate: event.date.split('T')[0],
+      gameDate: event.date.includes('T') ? event.date.split('T')[0] : event.date,
       startTime: event.date,
       timezone: venue.timezone,
       venue,
       isNeutralSite: competition.neutralSite,
       status,
-      statusDetail: event.status.type.shortDetail,
+      statusDetail: event.status.type.shortDetail || event.status.type.detail,
       homeScore: homeCompetitor.score ? parseInt(homeCompetitor.score) : undefined,
       awayScore: awayCompetitor.score ? parseInt(awayCompetitor.score) : undefined,
       period: event.status.period > 0 ? String(event.status.period) : undefined,
@@ -366,6 +379,9 @@ class SportsCalendarService {
    */
   private mapESPNTeam(competitor: ESPNCompetitor, league: SportsLeague): SportsTeam {
     const team = competitor.team;
+    if (!team?.id || !team?.abbreviation) {
+      throw new Error('Invalid ESPN competitor: missing team id/abbreviation');
+    }
     const marketId = TEAM_MARKETS[`${league}-${team.abbreviation}`];
 
     return {
@@ -387,10 +403,21 @@ class SportsCalendarService {
    */
   private mapESPNVenue(competition: ESPNCompetition): SportsVenue {
     const v = competition.venue;
+    if (!v?.id) {
+      return {
+        id: `espn-unknown-${competition.id}`,
+        name: 'TBD Venue',
+        city: 'Unknown',
+        state: 'Unknown',
+        country: 'USA',
+        timezone: 'America/New_York',
+      };
+    }
+
     return {
       id: `espn-${v.id}`,
       externalId: v.id,
-      name: v.fullName,
+      name: v.fullName || 'TBD Venue',
       city: v.address?.city || 'Unknown',
       state: v.address?.state || 'Unknown',
       country: 'USA',
@@ -407,15 +434,18 @@ class SportsCalendarService {
 
     for (const b of competition.broadcasts || []) {
       const isNational = b.market === 'national';
+      const names = Array.isArray(b.names) ? b.names.filter(Boolean) : [];
+      if (names.length === 0) continue;
       broadcasts.push({
         type: isNational ? 'national' : 'regional',
-        network: b.names.join(', '),
-        callLetters: b.names[0],
+        network: names.join(', '),
+        callLetters: names[0],
       });
     }
 
     // Also check geoBroadcasts
     for (const gb of competition.geoBroadcasts || []) {
+      if (!gb?.type?.shortName || !gb?.media?.shortName) continue;
       broadcasts.push({
         type: gb.type.shortName === 'TV' ? 'national' : 'streaming',
         network: gb.media.shortName,

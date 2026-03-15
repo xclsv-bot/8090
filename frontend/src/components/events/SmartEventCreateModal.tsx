@@ -30,6 +30,7 @@ interface SmartEventCreateModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated?: () => void;
+  suggestionsRefreshKey?: number;
 }
 
 interface EventSuggestion {
@@ -102,7 +103,12 @@ interface Venue {
   status: string;
 }
 
-export function SmartEventCreateModal({ open, onOpenChange, onCreated }: SmartEventCreateModalProps) {
+export function SmartEventCreateModal({
+  open,
+  onOpenChange,
+  onCreated,
+  suggestionsRefreshKey = 0,
+}: SmartEventCreateModalProps) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
@@ -130,7 +136,7 @@ export function SmartEventCreateModal({ open, onOpenChange, onCreated }: SmartEv
     if (open) {
       loadSuggestions();
     }
-  }, [open]);
+  }, [open, suggestionsRefreshKey]);
 
   // Filter suggestions when form changes
   useEffect(() => {

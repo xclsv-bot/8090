@@ -51,6 +51,28 @@ export interface BulkDuplicatePreview {
   validCount: number;
 }
 
+export interface SportsCalendarSyncResponse {
+  summary: {
+    totalLeagues: number;
+    successfulSyncs: number;
+    totalGamesFound: number;
+    totalGamesCreated: number;
+    totalGamesUpdated: number;
+    totalErrors: number;
+  };
+  results: Array<{
+    league: string;
+    success: boolean;
+    gamesFound: number;
+    gamesCreated: number;
+    gamesUpdated: number;
+    gamesSkipped: number;
+    errors: Array<{ message: string; code: string; retryable: boolean; externalId?: string }>;
+    duration: number;
+    syncedAt: string;
+  }>;
+}
+
 // ============================================
 // BUDGET HELPERS
 // ============================================
@@ -144,4 +166,7 @@ export const eventsApi = {
     const budgetData = res.data ?? (rawRes.id ? rawRes : null);
     return { success: true, data: transformBudgetResponse(budgetData as Record<string, unknown> | null) };
   },
+
+  /** Trigger sports calendar sync (admin only) */
+  syncSportsCalendar: () => post<SportsCalendarSyncResponse>('/api/v1/sports-calendar/sync', {}),
 };
