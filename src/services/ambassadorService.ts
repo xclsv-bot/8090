@@ -26,6 +26,7 @@ interface CreateAmbassadorInput {
 }
 
 interface UpdateAmbassadorInput {
+  clerkUserId?: string;
   firstName?: string;
   lastName?: string;
   email?: string;
@@ -122,6 +123,7 @@ class AmbassadorService {
     let paramIndex = 1;
 
     const fieldMap: Record<string, string> = {
+      clerkUserId: 'clerk_user_id',
       firstName: 'first_name',
       lastName: 'last_name',
       email: 'email',

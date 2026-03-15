@@ -8,10 +8,12 @@
 // ============================================
 
 export type EventStatus = 'planned' | 'confirmed' | 'active' | 'completed' | 'cancelled';
+export type EventType = 'activation' | 'promotion' | 'tournament' | 'watch_party' | 'corporate' | 'other';
 export type AmbassadorSkillLevel = 'trainee' | 'standard' | 'senior' | 'lead';
 export type CompensationType = 'per_signup' | 'hourly' | 'hybrid';
 export type AmbassadorStatus = 'active' | 'inactive' | 'suspended';
 export type ValidationStatus = 'pending' | 'validated' | 'rejected' | 'duplicate';
+export type SignUpSourceType = 'event' | 'import';
 export type PayPeriodStatus = 'open' | 'closed' | 'processing' | 'paid';
 export type BonusScope = 'event' | 'ambassador' | 'pay_period';
 
@@ -23,14 +25,32 @@ export interface Event {
   id: string;
   title: string;
   description?: string;
+  eventType?: EventType;
   venue?: string;
   address?: string;
   city?: string;
   state?: string;
+  locationName?: string;
+  locationAddressLine1?: string;
+  locationAddressLine2?: string;
+  locationCity?: string;
+  locationState?: string;
+  locationPostalCode?: string;
+  locationCountry?: string;
   eventDate: Date;
   startTime?: string;
   endTime?: string;
+  timezone?: string;
   status: EventStatus;
+  venueContactName?: string;
+  venueContactPhone?: string;
+  venueContactEmail?: string;
+  minAmbassadors?: number;
+  maxAmbassadors?: number;
+  requiredSkillLevel?: AmbassadorSkillLevel;
+  cancelledAt?: Date;
+  cancelledReason?: string;
+  completedAt?: Date;
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -70,10 +90,13 @@ export interface SignUp {
   eventId?: string;
   ambassadorId: string;
   payPeriodId?: string;
+  sourceType?: SignUpSourceType;
+  importBatchId?: string;
   customerFirstName: string;
   customerLastName: string;
   customerEmail?: string;
   customerPhone?: string;
+  customerState?: string;
   operatorId: number;
   operatorName?: string;
   validationStatus: ValidationStatus;
@@ -152,12 +175,17 @@ export interface CreateAmbassadorInput {
 export interface CreateSignUpInput {
   eventId?: string;
   ambassadorId: string;
+  payPeriodId?: string;
+  sourceType?: SignUpSourceType;
+  importBatchId?: string;
   customerFirstName: string;
   customerLastName: string;
   customerEmail?: string;
   customerPhone?: string;
+  customerState?: string;
   operatorId: number;
   operatorName?: string;
+  rejectionReason?: string;
   notes?: string;
 }
 

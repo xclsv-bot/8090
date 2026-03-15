@@ -91,6 +91,32 @@ export interface AmbassadorAvailabilitySnapshot {
   updatedAt: Date;
 }
 
+export interface AmbassadorGeneralAvailability {
+  id: string;
+  ambassadorId: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  timezone: string;
+  preferredRegions?: string[];
+  isActive: boolean;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface AmbassadorAvailabilityException {
+  id: string;
+  ambassadorId: string;
+  exceptionDate: Date;
+  isAvailable: boolean;
+  allDay: boolean;
+  startTime?: string;
+  endTime?: string;
+  reason?: string;
+  createdAt: Date;
+}
+
 export interface AmbassadorEmergencyContact {
   id: string;
   ambassadorId: string;

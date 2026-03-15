@@ -3,13 +3,12 @@
  * WO-28: Event Management data models and state machine
  */
 
-import type { EventStatus, AmbassadorSkillLevel } from './models.js';
+import type { EventStatus, AmbassadorSkillLevel, EventType } from './models.js';
 
 // ============================================
 // ENUMS
 // ============================================
 
-export type EventType = 'activation' | 'promotion' | 'tournament' | 'watch_party' | 'corporate' | 'other';
 export type AssignmentStatus = 'pending' | 'confirmed' | 'declined' | 'cancelled' | 'completed';
 
 // ============================================
@@ -25,6 +24,13 @@ export interface EventExtended {
   address?: string;
   city?: string;
   state?: string;
+  locationName?: string;
+  locationAddressLine1?: string;
+  locationAddressLine2?: string;
+  locationCity?: string;
+  locationState?: string;
+  locationPostalCode?: string;
+  locationCountry?: string;
   region?: string;
   eventDate: Date;
   startTime?: string;
@@ -170,6 +176,13 @@ export interface CreateEventInput {
   address?: string;
   city?: string;
   state?: string;
+  locationName?: string;
+  locationAddressLine1?: string;
+  locationAddressLine2?: string;
+  locationCity?: string;
+  locationState?: string;
+  locationPostalCode?: string;
+  locationCountry?: string;
   region?: string;
   eventDate: string;
   startTime?: string;
@@ -183,6 +196,7 @@ export interface CreateEventInput {
   minAmbassadors?: number;
   maxAmbassadors?: number;
   requiredSkillLevel?: AmbassadorSkillLevel;
+  notes?: string;
   operatorIds?: number[];
 }
 

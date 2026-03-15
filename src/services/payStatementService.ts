@@ -50,12 +50,19 @@ class PayStatementService {
     return db.queryOne<AmbassadorPayStatementWithDetails>(
       `SELECT 
         aps.*,
-        CONCAT(a.first_name, ' ', a.last_name) as ambassador_name,
-        a.email as ambassador_email,
-        pp.period_start,
-        pp.period_end,
-        (SELECT COUNT(*) FROM pay_statement_line_items WHERE statement_id = aps.id) as line_item_count,
-        (SELECT COUNT(*) FROM statement_payment_history WHERE statement_id = aps.id) as payment_count
+        aps.ambassador_id as "ambassadorId",
+        aps.pay_period_id as "payPeriodId",
+        aps.gross_pay as "grossPay",
+        aps.net_pay as "netPay",
+        aps.paid_at as "paidAt",
+        aps.created_at as "createdAt",
+        aps.updated_at as "updatedAt",
+        CONCAT(a.first_name, ' ', a.last_name) as "ambassadorName",
+        a.email as "ambassadorEmail",
+        pp.start_date as "periodStart",
+        pp.end_date as "periodEnd",
+        (SELECT COUNT(*) FROM pay_statement_line_items WHERE statement_id = aps.id) as "lineItemCount",
+        (SELECT COUNT(*) FROM statement_payment_history WHERE statement_id = aps.id) as "paymentCount"
        FROM ambassador_pay_statements aps
        JOIN ambassadors a ON a.id = aps.ambassador_id
        JOIN pay_periods pp ON pp.id = aps.pay_period_id
@@ -112,12 +119,19 @@ class PayStatementService {
       db.queryMany<AmbassadorPayStatementWithDetails>(
         `SELECT 
           aps.*,
-          CONCAT(a.first_name, ' ', a.last_name) as ambassador_name,
-          a.email as ambassador_email,
-          pp.period_start,
-          pp.period_end,
-          (SELECT COUNT(*) FROM pay_statement_line_items WHERE statement_id = aps.id) as line_item_count,
-          (SELECT COUNT(*) FROM statement_payment_history WHERE statement_id = aps.id) as payment_count
+          aps.ambassador_id as "ambassadorId",
+          aps.pay_period_id as "payPeriodId",
+          aps.gross_pay as "grossPay",
+          aps.net_pay as "netPay",
+          aps.paid_at as "paidAt",
+          aps.created_at as "createdAt",
+          aps.updated_at as "updatedAt",
+          CONCAT(a.first_name, ' ', a.last_name) as "ambassadorName",
+          a.email as "ambassadorEmail",
+          pp.start_date as "periodStart",
+          pp.end_date as "periodEnd",
+          (SELECT COUNT(*) FROM pay_statement_line_items WHERE statement_id = aps.id) as "lineItemCount",
+          (SELECT COUNT(*) FROM statement_payment_history WHERE statement_id = aps.id) as "paymentCount"
          FROM ambassador_pay_statements aps
          JOIN ambassadors a ON a.id = aps.ambassador_id
          JOIN pay_periods pp ON pp.id = aps.pay_period_id
@@ -397,7 +411,7 @@ class PayStatementService {
     periodEnd: Date;
   })[]> {
     return db.queryMany(
-      `SELECT sph.*, pp.period_start, pp.period_end
+      `SELECT sph.*, pp.start_date as "periodStart", pp.end_date as "periodEnd"
        FROM statement_payment_history sph
        JOIN ambassador_pay_statements aps ON aps.id = sph.statement_id
        JOIN pay_periods pp ON pp.id = aps.pay_period_id
@@ -493,8 +507,8 @@ class PayStatementService {
     const statement = await this.createStatement(ambassadorId, payPeriodId);
 
     // Get pay period dates
-    const period = await db.queryOne<{ period_start: Date; period_end: Date }>(
-      'SELECT period_start, period_end FROM pay_periods WHERE id = $1',
+    const period = await db.queryOne<{ start_date: Date; end_date: Date }>(
+      'SELECT start_date, end_date FROM pay_periods WHERE id = $1',
       [payPeriodId]
     );
 
@@ -519,8 +533,8 @@ class PayStatementService {
       `SELECT id, created_at FROM signups
        WHERE ambassador_id = $1 
        AND created_at BETWEEN $2 AND $3
-       AND validation_status = 'valid'`,
-      [ambassadorId, period.period_start, period.period_end]
+       AND validation_status = 'validated'`,
+      [ambassadorId, period.start_date, period.end_date]
     );
 
     if (signups.length > 0 && perSignupRate) {
@@ -540,14 +554,14 @@ class PayStatementService {
 
     // Calculate hourly earnings from assignments
     if (hourlyRate) {
-      const assignments = await db.queryMany<{ id: string; hours_worked: string; event_name: string }>(
-        `SELECT ea.id, ea.hours_worked, e.name as event_name
+      const assignments = await db.queryMany<{ id: string; hours_worked: string; event_title: string }>(
+        `SELECT ea.id, ea.hours_worked, e.title as event_title
          FROM event_assignments ea
          JOIN events e ON e.id = ea.event_id
          WHERE ea.ambassador_id = $1
          AND ea.check_out_time BETWEEN $2 AND $3
          AND ea.hours_worked IS NOT NULL`,
-        [ambassadorId, period.period_start, period.period_end]
+        [ambassadorId, period.start_date, period.end_date]
       );
 
       for (const assignment of assignments) {
@@ -558,7 +572,7 @@ class PayStatementService {
         const item = await this.addLineItem({
           statementId: statement.id,
           type: 'earning',
-          description: `${hours.toFixed(1)} hrs @ $${hourlyRate.rateAmount}/hr - ${assignment.event_name}`,
+          description: `${hours.toFixed(1)} hrs @ $${hourlyRate.rateAmount}/hr - ${assignment.event_title}`,
           amount,
           sourceType: 'event_assignment',
           sourceId: assignment.id,

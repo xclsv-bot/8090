@@ -12,6 +12,7 @@ import { validateBody, validateQuery, validateParams, commonSchemas } from '../m
 
 // Validation schemas
 const createAmbassadorSchema = z.object({
+  clerkUserId: z.string().optional(),
   firstName: z.string().min(1).max(100),
   lastName: z.string().min(1).max(100),
   email: z.string().email(),

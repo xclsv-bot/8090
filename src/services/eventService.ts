@@ -24,6 +24,13 @@ interface UpdateEventInput {
   address?: string;
   city?: string;
   state?: string;
+  locationName?: string;
+  locationAddressLine1?: string;
+  locationAddressLine2?: string;
+  locationCity?: string;
+  locationState?: string;
+  locationPostalCode?: string;
+  locationCountry?: string;
   region?: string;
   eventDate?: string;
   startTime?: string;
@@ -48,11 +55,13 @@ class EventService {
     const result = await db.queryOne<EventExtended>(
       `INSERT INTO events (
         title, description, event_type, venue, address, city, state, region,
+        location_name, location_address_line_1, location_address_line_2,
+        location_city, location_state, location_postal_code, location_country,
         event_date, start_time, end_time, timezone,
         venue_contact_name, venue_contact_phone, venue_contact_email,
         expected_attendance, budget, min_ambassadors, max_ambassadors,
-        required_skill_level, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, 'planned')
+        required_skill_level, notes, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, 'planned')
       RETURNING *`,
       [
         input.title,
@@ -63,6 +72,13 @@ class EventService {
         input.city,
         input.state,
         input.region,
+        input.locationName,
+        input.locationAddressLine1,
+        input.locationAddressLine2,
+        input.locationCity,
+        input.locationState,
+        input.locationPostalCode,
+        input.locationCountry,
         input.eventDate,
         input.startTime,
         input.endTime,
@@ -75,6 +91,7 @@ class EventService {
         input.minAmbassadors || 1,
         input.maxAmbassadors,
         input.requiredSkillLevel,
+        input.notes,
       ]
     );
 
@@ -154,6 +171,13 @@ class EventService {
       address: 'address',
       city: 'city',
       state: 'state',
+      locationName: 'location_name',
+      locationAddressLine1: 'location_address_line_1',
+      locationAddressLine2: 'location_address_line_2',
+      locationCity: 'location_city',
+      locationState: 'location_state',
+      locationPostalCode: 'location_postal_code',
+      locationCountry: 'location_country',
       region: 'region',
       eventDate: 'event_date',
       startTime: 'start_time',

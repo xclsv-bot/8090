@@ -170,7 +170,7 @@ class AssignmentService {
       const signupCount = await db.queryOne<{ count: string }>(
         `SELECT COUNT(*) as count FROM signups 
          WHERE event_id = $1 AND ambassador_id = $2`,
-        [result.eventId, result.ambassadorId]
+        [(result as any).event_id, (result as any).ambassador_id]
       );
       
       await db.query(

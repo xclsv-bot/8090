@@ -8,14 +8,16 @@ import { db } from './database.js';
 import { logger } from '../utils/logger.js';
 import { eventPublisher } from './eventPublisher.js';
 import { cpaService } from './cpaService.js';
-import type { SignUp, ValidationStatus } from '../types/models.js';
+import type { SignUp, ValidationStatus, SignUpSourceType } from '../types/models.js';
 
-type SignupStatus = 'pending' | 'confirmed' | 'invalid' | 'duplicate';
+type SignupStatus = 'pending' | 'validated' | 'rejected' | 'duplicate';
 type Signup = SignUp;
 
 interface CreateSignupInput {
   eventId?: string;
   ambassadorId: string;
+  payPeriodId?: string;
+  importBatchId?: string;
   operatorId: number;
   customerFirstName: string;
   customerLastName: string;
@@ -24,7 +26,7 @@ interface CreateSignupInput {
   customerState?: string;
   depositAmount?: number;
   promoCode?: string;
-  sourceType?: string;
+  sourceType?: SignUpSourceType;
   sourceRef?: string;
   rawData?: Record<string, unknown>;
 }
@@ -65,15 +67,17 @@ class SignupService {
 
     const result = await db.queryOne<Signup>(
       `INSERT INTO signups (
-        event_id, ambassador_id, operator_id,
+        event_id, ambassador_id, pay_period_id, import_batch_id, operator_id,
         customer_first_name, customer_last_name, customer_email, customer_phone, customer_state,
         deposit_amount, promo_code, source_type, source_ref, raw_data,
-        status, validation_status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'pending', 'pending')
+        validation_status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'pending')
       RETURNING *`,
       [
         input.eventId,
         input.ambassadorId,
+        input.payPeriodId,
+        input.importBatchId,
         input.operatorId,
         input.customerFirstName,
         input.customerLastName,
@@ -82,7 +86,7 @@ class SignupService {
         input.customerState,
         input.depositAmount,
         input.promoCode,
-        input.sourceType || 'manual',
+        input.sourceType || 'event',
         input.sourceRef,
         input.rawData ? JSON.stringify(input.rawData) : null,
       ]
@@ -160,7 +164,7 @@ class SignupService {
       values.push(filters.operatorId);
     }
     if (filters.status) {
-      conditions.push(`s.status = $${paramIndex++}`);
+      conditions.push(`s.validation_status = $${paramIndex++}`);
       values.push(filters.status);
     }
     if (filters.validationStatus) {
@@ -266,9 +270,9 @@ class SignupService {
         userId: validatedBy,
         payload: {
           signUpId: id,
-          ambassadorId: result.ambassadorId,
-          operatorId: result.operatorId,
-          customerName: `${result.customerFirstName} ${result.customerLastName}`,
+          ambassadorId: (result as any).ambassador_id,
+          operatorId: (result as any).operator_id,
+          customerName: `${(result as any).customer_first_name} ${(result as any).customer_last_name}`.trim(),
           validationStatus: status,
           rejectionReason: status === 'rejected' ? notes : undefined,
         },
@@ -310,6 +314,7 @@ class SignupService {
       try {
         const signup = signups[i];
         signup.sourceType = 'import';
+        signup.importBatchId = batch!.id;
         signup.sourceRef = batch!.id;
         await this.create(signup, importedBy);
         success++;

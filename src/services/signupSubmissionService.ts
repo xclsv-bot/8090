@@ -535,6 +535,7 @@ class SignUpSubmissionService {
   ): Promise<SignUpManaged> {
     const id = randomUUID();
     const now = new Date();
+    const dbSourceType = data.sourceType === 'event' ? 'event' : 'event';
 
     const result = await client.query(
       `INSERT INTO signups (
@@ -561,7 +562,7 @@ class SignUpSubmissionService {
         data.customerPhone || null,
         data.customerState || null,
         data.operatorId,
-        data.sourceType,
+        dbSourceType,
         data.imageUrl || null,
         data.cpaApplied,
         data.ipAddress || null,

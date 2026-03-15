@@ -1,71 +1,129 @@
-import { readFileSync, readdirSync } from 'fs';
+import { readFileSync } from 'fs';
 import { Pool } from 'pg';
-import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { cwd } from 'process';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const __dirname = join(cwd(), 'src', 'db');
 
-const DATABASE_URL = 'postgresql://neondb_owner:npg_XwRHzDI6h4WU@ep-twilight-thunder-aidv5htg-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require';
+const DATABASE_URL =
+  'postgresql://neondb_owner:npg_XwRHzDI6h4WU@ep-twilight-thunder-aidv5htg-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require';
 
 // Order matters - base schema first, then extensions
 const SCHEMA_ORDER = [
-  'schema.sql',           // Base tables (events, ambassadors, signups, etc.)
-  'operator_schema.sql',  // Operators
-  'cpa_schema.sql',       // CPA rates
-  'ambassador_schema.sql', // Ambassador extensions
-  'event_management_schema.sql', // Event management
-  'signup_schema.sql',    // Signup extensions (WO-52)
-  'signup_management_schema.sql', // Sign-up management (WO-66: extraction, sync, audit)
-  'availability_schema.sql', // Availability & scheduling
-  'event_chat_schema.sql', // Chat system
-  'event_logs.sql',       // Event logs
-  'financial_schema.sql', // Financial management
-  'budget_actuals_schema.sql', // Budget vs Actuals (WO-82)
-  'payroll_schema.sql',   // Payroll
-  'integrations_schema.sql', // Integrations
-  'analytics_schema.sql', // Analytics & Reporting (WO-71)
-  'leaderboard_schema.sql', // Leaderboard & Ambassador Analytics (WO-73)
-  'alerting_schema.sql',  // KPI Alerting & Threshold Versioning (WO-74)
-  'support_hub_schema.sql', // Support Hub (WO-56: Knowledge Base, Training, Tickets)
-  'support_hub_realtime_schema.sql', // Support Hub Real-time (WO-58: WebSocket, DM, Presence)
-];
+  'schema.sql',
+  'operator_schema.sql',
+  'cpa_schema.sql',
+  'ambassador_schema.sql',
+  'event_management_schema.sql',
+  'signup_schema.sql',
+  'signup_management_schema.sql',
+  'availability_schema.sql',
+  'event_chat_schema.sql',
+  'event_logs.sql',
+  'financial_schema.sql',
+  'budget_actuals_schema.sql',
+  'payroll_schema.sql',
+  'integrations_schema.sql',
+  'analytics_schema.sql',
+  'leaderboard_schema.sql',
+  'alerting_schema.sql',
+  'support_hub_schema.sql',
+  'support_hub_realtime_schema.sql',
+] as const;
 
-async function migrate() {
-  const pool = new Pool({ connectionString: DATABASE_URL });
-  
+const WO133_MIGRATIONS = [
+  '001_update_event_table.sql',
+  '002_create_event_assignment_table.sql',
+  '003_update_ambassador_table.sql',
+  '004_update_signup_table.sql',
+  '005_create_payroll_tables.sql',
+  '006_create_availability_tables.sql',
+] as const;
+
+export type MigrationDirection = 'up' | 'down';
+
+export function parseMigrationSections(sql: string): { up: string; down: string } {
+  const normalized = sql.replace(/\r\n/g, '\n');
+  const upMarker = /^\s*--\s*UP\s*$/im;
+  const downMarker = /^\s*--\s*DOWN\s*$/im;
+
+  const upMatch = upMarker.exec(normalized);
+  const downMatch = downMarker.exec(normalized);
+
+  if (!downMatch) {
+    return { up: normalized.trim(), down: '' };
+  }
+
+  const upStart = upMatch ? upMatch.index + upMatch[0].length : 0;
+  const up = normalized.slice(upStart, downMatch.index).trim();
+  const down = normalized.slice(downMatch.index + downMatch[0].length).trim();
+
+  return { up, down };
+}
+
+async function runSql(pool: Pool, label: string, sql: string): Promise<void> {
+  if (!sql.trim()) {
+    console.log(`   ⏭️  ${label} (empty)`);
+    return;
+  }
+
+  await pool.query('BEGIN');
   try {
-    console.log('🔄 Running all migrations...\n');
-    
-    for (const schemaFile of SCHEMA_ORDER) {
-      const schemaPath = join(__dirname, schemaFile);
-      try {
+    await pool.query(sql);
+    await pool.query('COMMIT');
+    console.log(`   ✅ ${label}`);
+  } catch (error) {
+    await pool.query('ROLLBACK');
+    throw error;
+  }
+}
+
+export async function migrate(direction: MigrationDirection = 'up'): Promise<void> {
+  const pool = new Pool({ connectionString: DATABASE_URL });
+
+  try {
+    console.log(`🔄 Running migrations (${direction.toUpperCase()})...\n`);
+
+    if (direction === 'up') {
+      for (const schemaFile of SCHEMA_ORDER) {
+        const schemaPath = join(__dirname, schemaFile);
         const schema = readFileSync(schemaPath, 'utf-8');
-        console.log(`📄 Running ${schemaFile}...`);
-        await pool.query(schema);
-        console.log(`   ✅ Success`);
-      } catch (error: any) {
-        console.log(`   ⚠️  ${error.message?.split('\n')[0] || 'Error'}`);
-        // Continue on error - some might be "already exists"
+        console.log(`📄 Running base schema: ${schemaFile}`);
+        try {
+          await runSql(pool, schemaFile, schema);
+        } catch (error: any) {
+          console.log(`   ⚠️  ${error.message?.split('\n')[0] || 'Error'}`);
+        }
+      }
+
+      console.log('\n📦 Running WO-133 migrations...');
+      for (const migrationFile of WO133_MIGRATIONS) {
+        const migrationPath = join(__dirname, 'migrations', migrationFile);
+        const migration = readFileSync(migrationPath, 'utf-8');
+        const { up } = parseMigrationSections(migration);
+
+        console.log(`📄 ${migrationFile}`);
+        await runSql(pool, `${migrationFile} [UP]`, up);
+      }
+    } else {
+      console.log('↩️  Rolling back WO-133 migrations...');
+
+      for (const migrationFile of [...WO133_MIGRATIONS].reverse()) {
+        const migrationPath = join(__dirname, 'migrations', migrationFile);
+        const migration = readFileSync(migrationPath, 'utf-8');
+        const { down } = parseMigrationSections(migration);
+
+        console.log(`📄 ${migrationFile}`);
+        if (!down.trim()) {
+          console.log('   ⏭️  No DOWN section, skipping');
+          continue;
+        }
+
+        await runSql(pool, `${migrationFile} [DOWN]`, down);
       }
     }
-    
-    console.log('\n✅ All migrations complete!\n');
-    
-    // Verify tables
-    const result = await pool.query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'public' 
-      AND table_type = 'BASE TABLE'
-      ORDER BY table_name
-    `);
-    
-    console.log(`📋 ${result.rows.length} tables in database:`);
-    result.rows.forEach(row => {
-      console.log(`   - ${row.table_name}`);
-    });
-    
+
+    console.log('\n✅ Migration run complete!\n');
   } catch (error) {
     console.error('❌ Migration failed:', error);
     process.exit(1);
@@ -74,4 +132,10 @@ async function migrate() {
   }
 }
 
-migrate();
+const args = new Set(process.argv.slice(2));
+const direction: MigrationDirection =
+  args.has('--rollback') || args.has('--down') ? 'down' : 'up';
+
+if ((process.argv[1] || '').includes('migrate-all')) {
+  migrate(direction);
+}

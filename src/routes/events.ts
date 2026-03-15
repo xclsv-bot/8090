@@ -17,6 +17,13 @@ const createEventSchema = z.object({
   address: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
+  locationName: z.string().optional(),
+  locationAddressLine1: z.string().optional(),
+  locationAddressLine2: z.string().optional(),
+  locationCity: z.string().optional(),
+  locationState: z.string().optional(),
+  locationPostalCode: z.string().optional(),
+  locationCountry: z.string().optional(),
   region: z.string().optional(),
   eventDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   startTime: z.string().optional(),
@@ -30,6 +37,7 @@ const createEventSchema = z.object({
   minAmbassadors: z.number().int().positive().optional(),
   maxAmbassadors: z.number().int().positive().optional(),
   requiredSkillLevel: z.enum(['trainee', 'standard', 'senior', 'lead']).optional(),
+  notes: z.string().optional(),
   operatorIds: z.array(z.number().int().positive()).optional(),
 });
 

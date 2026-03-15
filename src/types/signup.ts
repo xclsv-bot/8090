@@ -15,7 +15,7 @@ import type { ValidationStatus } from './models.js';
  * - event: Submitted through event chat during an event
  * - solo: Submitted through regional solo chat outside of events
  */
-export type SignUpSourceType = 'event' | 'solo';
+export type SignUpSourceType = 'event' | 'import' | 'solo';
 
 /**
  * Status of AI extraction for bet slip images
