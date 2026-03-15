@@ -67,6 +67,8 @@ export function EventListView({
   onDelete,
   onStatusChange,
 }: EventListViewProps) {
+  const isDeletableStatus = (status: EventStatus) => status === 'completed' || status === 'cancelled';
+
   // Sorting state (AC-EM-006.2)
   const [sortField, setSortField] = useState<SortField>('eventDate');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -357,12 +359,16 @@ export function EventListView({
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
+                              if (!isDeletableStatus(event.status)) {
+                                alert(`Only completed or cancelled events can be deleted. "${event.title}" is currently ${event.status}.`);
+                                return;
+                              }
                               onDelete(event);
                             }}
                             className="text-red-600 focus:text-red-600"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
+                            {isDeletableStatus(event.status) ? 'Delete' : 'Delete (completed/cancelled only)'}
                           </DropdownMenuItem>
                         </>
                       )}

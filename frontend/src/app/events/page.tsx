@@ -63,6 +63,7 @@ export default function EventsPage() {
   const [bulkDuplicateEvent, setBulkDuplicateEvent] = useState<Event | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const isAdmin = useMemo(() => extractUserRole(sessionClaims) === 'admin', [sessionClaims]);
+  const isDeletableStatus = (status: Event['status']) => status === 'completed' || status === 'cancelled';
 
   useEffect(() => {
     if (!toast) return;
@@ -72,6 +73,11 @@ export default function EventsPage() {
 
   // Handlers
   const handleDeleteEvent = async (event: Event) => {
+    if (!isDeletableStatus(event.status)) {
+      alert(`Only completed or cancelled events can be deleted. "${event.title}" is currently ${event.status}.`);
+      return;
+    }
+
     if (!confirm(`Are you sure you want to delete "${event.title}"? This cannot be undone.`)) {
       return;
     }

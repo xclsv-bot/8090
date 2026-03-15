@@ -44,9 +44,14 @@ export default function EventDetailPage() {
   const [showBulkDuplicateModal, setShowBulkDuplicateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const isDeletableStatus = (status: Event['status']) => status === 'completed' || status === 'cancelled';
 
   async function handleDelete() {
     if (!event) return;
+    if (!isDeletableStatus(event.status)) {
+      alert(`Only completed or cancelled events can be deleted. This event is currently ${event.status}.`);
+      return;
+    }
     if (!confirm(`Are you sure you want to delete "${event.title}"? This cannot be undone.`)) return;
     
     setDeleting(true);
@@ -285,7 +290,7 @@ export default function EventDetailPage() {
                   disabled={deleting}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
-                  {deleting ? 'Deleting...' : 'Delete Event'}
+                  {deleting ? 'Deleting...' : isDeletableStatus(event.status) ? 'Delete Event' : 'Delete Event (completed/cancelled only)'}
                 </Button>
               </div>
             </div>
