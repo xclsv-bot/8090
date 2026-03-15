@@ -64,8 +64,16 @@ export const payrollApi = {
   // ----------------------------------------
 
   /** Get payment history for an ambassador */
-  getAmbassadorPayments: (ambassadorId: string, limit?: number) => {
-    const query = limit ? `?limit=${limit}` : '';
+  getAmbassadorPayments: (
+    ambassadorId: string,
+    params?: { limit?: number; fromDate?: string; toDate?: string; periodType?: string },
+  ) => {
+    const query = buildQueryString({
+      limit: params?.limit,
+      fromDate: params?.fromDate,
+      toDate: params?.toDate,
+      periodType: params?.periodType,
+    });
     return get<PayrollRecord[]>(`/api/v1/payroll/ambassador/${ambassadorId}/history${query}`);
   },
 

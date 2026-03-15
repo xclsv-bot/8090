@@ -2,7 +2,7 @@
 
 import {
   createContext,
-  type PropsWithChildren,
+  type ReactNode,
   useCallback,
   useMemo,
   useState,
@@ -24,6 +24,14 @@ import {
 
 export const TimeFilterContext = createContext<TimeFilterContextValue | null>(null);
 
+interface TimeFilterProviderProps {
+  children: ReactNode;
+  defaultPeriod?: TimePeriod;
+  syncToUrl?: boolean;
+  persistToStorage?: boolean;
+  storageKey?: string;
+}
+
 function buildTimeFilterUrl(pathname: string, existing: URLSearchParams, state: TimeFilterState): string {
   const query = new URLSearchParams(existing.toString());
   query.set('fromDate', state.startDate);
@@ -33,30 +41,48 @@ function buildTimeFilterUrl(pathname: string, existing: URLSearchParams, state: 
   return `${pathname}?${query.toString()}`;
 }
 
-export function TimeFilterProvider({ children }: PropsWithChildren) {
+export function TimeFilterProvider({
+  children,
+  defaultPeriod = TimePeriodEnum.THIS_MONTH,
+  syncToUrl = true,
+  persistToStorage = true,
+  storageKey = TIME_FILTER_STORAGE_KEY,
+}: TimeFilterProviderProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const [state, setState] = useState<TimeFilterState>(() => {
     if (typeof window === 'undefined') {
-      return getDefaultTimeFilterState();
+      return getDefaultTimeFilterState(new Date(), defaultPeriod);
     }
 
-    const fromQuery = parseTimeFilterFromQuery(new URLSearchParams(window.location.search));
-    if (fromQuery) {
-      return fromQuery;
+    if (syncToUrl) {
+      const fromQuery = parseTimeFilterFromQuery(new URLSearchParams(window.location.search));
+      if (fromQuery) {
+        return fromQuery;
+      }
     }
 
-    const fromStorage = parseTimeFilterFromStorage(
-      window.localStorage.getItem(TIME_FILTER_STORAGE_KEY),
-    );
+    if (persistToStorage) {
+      const fromStorage = parseTimeFilterFromStorage(window.localStorage.getItem(storageKey));
 
-    return fromStorage ?? getDefaultTimeFilterState();
+      if (fromStorage) {
+        return fromStorage;
+      }
+    }
+
+    return getDefaultTimeFilterState(new Date(), defaultPeriod);
   });
 
   useEffect(() => {
-    window.localStorage.setItem(TIME_FILTER_STORAGE_KEY, serializeTimeFilter(state));
+    if (persistToStorage) {
+      window.localStorage.setItem(storageKey, serializeTimeFilter(state));
+    }
+
+    if (!syncToUrl) {
+      return;
+    }
 
     const currentState = parseTimeFilterFromQuery(new URLSearchParams(searchParams.toString()));
     if (
@@ -69,7 +95,7 @@ export function TimeFilterProvider({ children }: PropsWithChildren) {
 
     const nextUrl = buildTimeFilterUrl(pathname, new URLSearchParams(searchParams.toString()), state);
     router.replace(nextUrl, { scroll: false });
-  }, [pathname, router, searchParams, state]);
+  }, [pathname, persistToStorage, router, searchParams, state, storageKey, syncToUrl]);
 
   const setPeriod = useCallback((period: TimePeriod) => {
     setState((current) => {
@@ -106,8 +132,8 @@ export function TimeFilterProvider({ children }: PropsWithChildren) {
   }, []);
 
   const resetToDefault = useCallback(() => {
-    setState(getDefaultTimeFilterState());
-  }, []);
+    setState(getDefaultTimeFilterState(new Date(), defaultPeriod));
+  }, [defaultPeriod]);
 
   const contextValue = useMemo<TimeFilterContextValue>(
     () => ({

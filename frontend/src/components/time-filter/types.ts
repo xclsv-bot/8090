@@ -41,6 +41,7 @@ export interface DateRangeFilterProps {
   onChange: (startDate: string, endDate: string) => void;
   minDate?: string;
   maxDate?: string;
+  idPrefix?: string;
 }
 
 export interface QuickFiltersProps {

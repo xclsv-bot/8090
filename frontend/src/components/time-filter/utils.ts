@@ -89,8 +89,10 @@ export function getDateRangeForPeriod(
   }
 }
 
-export function getDefaultTimeFilterState(now: Date = new Date()): TimeFilterState {
-  const period = TimePeriod.THIS_MONTH;
+export function getDefaultTimeFilterState(
+  now: Date = new Date(),
+  period: TimePeriod = TimePeriod.THIS_MONTH,
+): TimeFilterState {
   const range = getDateRangeForPeriod(period, now);
 
   return {

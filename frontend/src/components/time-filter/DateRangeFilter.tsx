@@ -11,6 +11,7 @@ export function DateRangeFilter({
   onChange,
   minDate,
   maxDate,
+  idPrefix = 'time-filter',
 }: DateRangeFilterProps) {
   const hasError = useMemo(() => !isValidDateRange(startDate, endDate), [startDate, endDate]);
 
@@ -19,11 +20,11 @@ export function DateRangeFilter({
       <legend className="text-sm font-medium text-gray-700">Date range</legend>
       <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
         <div className="flex flex-col gap-1">
-          <label htmlFor="time-filter-start-date" className="text-xs text-gray-600">
+          <label htmlFor={`${idPrefix}-start-date`} className="text-xs text-gray-600">
             Start date
           </label>
           <Input
-            id="time-filter-start-date"
+            id={`${idPrefix}-start-date`}
             type="date"
             aria-label="Start date"
             value={startDate}
@@ -34,11 +35,11 @@ export function DateRangeFilter({
         </div>
 
         <div className="flex flex-col gap-1">
-          <label htmlFor="time-filter-end-date" className="text-xs text-gray-600">
+          <label htmlFor={`${idPrefix}-end-date`} className="text-xs text-gray-600">
             End date
           </label>
           <Input
-            id="time-filter-end-date"
+            id={`${idPrefix}-end-date`}
             type="date"
             aria-label="End date"
             value={endDate}

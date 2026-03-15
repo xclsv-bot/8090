@@ -27,6 +27,13 @@ export const ambassadorsApi = {
   update: (id: string, data: Partial<Ambassador>) => put<Ambassador>(`/api/v1/ambassadors/${id}`, data),
 
   /** Get ambassador performance metrics */
-  getPerformance: (id: string) =>
-    get<{ signups: number; events: number; earnings: number }>(`/api/v1/ambassadors/${id}/performance`),
+  getPerformance: (
+    id: string,
+    params?: { fromDate?: string; toDate?: string; periodType?: string },
+  ) => {
+    const query = buildQueryString(params);
+    return get<{ signups: number; events: number; earnings: number }>(
+      `/api/v1/ambassadors/${id}/performance${query}`,
+    );
+  },
 };

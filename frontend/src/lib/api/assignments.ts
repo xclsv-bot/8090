@@ -4,7 +4,7 @@
  */
 
 import type { Ambassador } from '@/types';
-import { get, post, patch, del } from './client';
+import { get, post, patch, del, buildQueryString } from './client';
 
 // ============================================
 // TYPES
@@ -14,6 +14,10 @@ export interface EventAssignment {
   id: string;
   eventId: string;
   ambassadorId: string;
+  eventTitle?: string;
+  eventDate?: string;
+  city?: string;
+  state?: string;
   // Flat ambassador fields from JOIN
   firstName?: string;
   lastName?: string;
@@ -51,8 +55,23 @@ export const assignmentsApi = {
     get<EventAssignment[]>(`/api/v1/assignments/event/${eventId}`),
 
   /** Get assignments for an ambassador */
-  getByAmbassador: (ambassadorId: string, upcoming = true) =>
-    get<EventAssignment[]>(`/api/v1/assignments/ambassador/${ambassadorId}?upcoming=${upcoming}`),
+  getByAmbassador: (
+    ambassadorId: string,
+    params?: {
+      upcoming?: boolean;
+      fromDate?: string;
+      toDate?: string;
+      periodType?: string;
+    },
+  ) => {
+    const query = buildQueryString({
+      upcoming: params?.upcoming ?? true,
+      fromDate: params?.fromDate,
+      toDate: params?.toDate,
+      periodType: params?.periodType,
+    });
+    return get<EventAssignment[]>(`/api/v1/assignments/ambassador/${ambassadorId}${query}`);
+  },
 
   /** Create new assignment */
   create: (data: {
