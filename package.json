@@ -10,6 +10,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:phase2": "vitest run src/tests/phase2",
+    "test:phase1:coverage": "vitest run -c vitest.config.phase1.ts --coverage",
     "test:wo65": "vitest run src/services/integration/__tests__/wo65.test.ts",
     "lint": "eslint src --ext .ts",
     "format": "prettier --write src/**/*.ts"
@@ -53,6 +54,7 @@
     "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^8.56.0",
     "@typescript-eslint/parser": "^8.56.0",
+    "@vitest/coverage-v8": "^4.1.0",
     "eslint": "^10.0.0",
     "prettier": "^3.8.1",
     "tsx": "^4.21.0",
