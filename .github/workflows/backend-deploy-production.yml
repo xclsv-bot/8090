@@ -1,0 +1,92 @@
+name: Backend Deploy Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      git_ref:
+        description: 'Git ref to deploy (branch, tag, or commit SHA)'
+        required: true
+        default: main
+      change_ticket:
+        description: 'Change ticket or release note reference'
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy-production:
+    name: Deploy to Render Production
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout selected ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        run: npm test -- --run
+
+      - name: Build
+        run: npm run build
+
+      - name: Trigger Render production deploy
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_PRODUCTION_SERVICE_ID: ${{ secrets.RENDER_PRODUCTION_SERVICE_ID }}
+        run: |
+          curl --fail --show-error --silent \
+            --request POST \
+            --url "https://api.render.com/v1/services/${RENDER_PRODUCTION_SERVICE_ID}/deploys" \
+            --header "Authorization: Bearer ${RENDER_API_KEY}" \
+            --header "Accept: application/json"
+
+      - name: Post-deployment health check
+        env:
+          PRODUCTION_HEALTHCHECK_URL: ${{ secrets.PRODUCTION_HEALTHCHECK_URL }}
+        run: |
+          for attempt in {1..12}; do
+            if curl --fail --silent --show-error "${PRODUCTION_HEALTHCHECK_URL}" > /dev/null; then
+              echo "Production health check passed on attempt ${attempt}."
+              exit 0
+            fi
+
+            echo "Health check failed on attempt ${attempt}. Retrying in 20 seconds..."
+            sleep 20
+          done
+
+          echo "Production health check failed after 12 attempts."
+          exit 1
+
+      - name: Rollback guidance
+        if: failure()
+        run: |
+          cat <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          ## Rollback Procedure
+
+          1. Open Render dashboard for production service.
+          2. Redeploy the previous known-good commit/image.
+          3. Verify `PRODUCTION_HEALTHCHECK_URL` is healthy.
+          4. Create incident notes with failed run URL and deployed ref.
+          EOF

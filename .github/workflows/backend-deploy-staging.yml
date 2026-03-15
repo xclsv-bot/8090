@@ -1,0 +1,78 @@
+name: Backend Deploy Staging
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+      - 'render.yaml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-staging-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy-staging:
+    name: Deploy to Render Staging
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        run: npm test -- --run
+
+      - name: Build
+        run: npm run build
+
+      - name: Trigger Render staging deploy
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_STAGING_SERVICE_ID: ${{ secrets.RENDER_STAGING_SERVICE_ID }}
+        run: |
+          curl --fail --show-error --silent \
+            --request POST \
+            --url "https://api.render.com/v1/services/${RENDER_STAGING_SERVICE_ID}/deploys" \
+            --header "Authorization: Bearer ${RENDER_API_KEY}" \
+            --header "Accept: application/json"
+
+      - name: Post-deployment health check
+        env:
+          STAGING_HEALTHCHECK_URL: ${{ secrets.STAGING_HEALTHCHECK_URL }}
+        run: |
+          for attempt in {1..10}; do
+            if curl --fail --silent --show-error "${STAGING_HEALTHCHECK_URL}" > /dev/null; then
+              echo "Staging health check passed on attempt ${attempt}."
+              exit 0
+            fi
+
+            echo "Health check failed on attempt ${attempt}. Retrying in 15 seconds..."
+            sleep 15
+          done
+
+          echo "Staging health check failed after 10 attempts."
+          exit 1
