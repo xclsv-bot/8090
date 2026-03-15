@@ -11,6 +11,7 @@
     "test:run": "vitest run",
     "test:phase2": "vitest run src/tests/phase2",
     "test:phase4": "vitest run -c vitest.config.phase4.ts --coverage",
+    "test:phase5": "vitest run -c vitest.config.phase5.ts --coverage",
     "test:phase21": "vitest run -c vitest.config.phase21.ts --coverage",
     "test:phase22": "vitest run -c vitest.config.phase22.ts --coverage",
     "test:phase1:coverage": "vitest run -c vitest.config.phase1.ts --coverage",
