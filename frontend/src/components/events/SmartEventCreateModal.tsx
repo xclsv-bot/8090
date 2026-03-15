@@ -163,13 +163,12 @@ export function SmartEventCreateModal({
         startTime: form.startTime,
         endTime: form.endTime,
         description: form.description,
-        status: 'planned',
       });
 
       if (res.data?.id) {
         onOpenChange(false);
         onCreated?.();
-        router.push(`/events/${res.data.id}`);
+        router.push('/events');
       }
     } catch {
       alert('Failed to create event');

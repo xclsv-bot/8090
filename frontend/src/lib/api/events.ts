@@ -114,7 +114,7 @@ export const eventsApi = {
   /** Get single event by ID */
   get: (id: string) => get<Event>(`/api/v1/events/${id}`),
 
-  /** Create new event */
+  /** Create new event (backend assigns initial status; do not send status in create payload) */
   create: (data: Partial<Event>) => post<Event>('/api/v1/events', data),
 
   /** Update existing event */

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import type { Event } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,7 @@ function extractUserRole(sessionClaims: unknown): string | undefined {
 }
 
 export default function EventsPage() {
+  const router = useRouter();
   // Data & state from hooks
   const { events, loading, isConnected, reload, remove, updateStatus } = useEvents();
   const { filters, setFilters, filteredEvents, uniqueLocations } = useEventFilters(events);
@@ -212,7 +214,7 @@ export default function EventsPage() {
       ) : (
         <EventListView
           events={filteredEvents}
-          onEventClick={setSelectedEvent}
+          onEventClick={(event) => router.push(`/events/${event.id}`)}
           onDuplicate={setDuplicateEvent}
           onBulkDuplicate={setBulkDuplicateEvent}
           onDelete={handleDeleteEvent}
