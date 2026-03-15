@@ -1,0 +1,74 @@
+{
+  "title": "XCLSV System Health",
+  "description": "Core platform request, dependency, and runtime health overview",
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": "request-rate",
+      "title": "Request Rate",
+      "type": "timeseries",
+      "metric": "app_requests_total",
+      "aggregation": "rate",
+      "unit": "req/s"
+    },
+    {
+      "id": "error-rate",
+      "title": "Error Rate",
+      "type": "timeseries",
+      "metric": "app_request_error_rate_percent",
+      "aggregation": "avg",
+      "unit": "%"
+    },
+    {
+      "id": "latency-p99",
+      "title": "P99 Latency",
+      "type": "timeseries",
+      "metric": "app_request_latency_ms",
+      "filters": {
+        "quantile": "0.99"
+      },
+      "aggregation": "avg",
+      "unit": "ms"
+    },
+    {
+      "id": "db-health",
+      "title": "Database Health",
+      "type": "stat",
+      "metrics": [
+        "app_db_queries_total",
+        "app_db_query_errors_total"
+      ],
+      "unit": "count"
+    },
+    {
+      "id": "memory",
+      "title": "Heap Memory",
+      "type": "timeseries",
+      "metrics": [
+        "process_memory_heap_used_bytes",
+        "process_memory_heap_total_bytes"
+      ],
+      "unit": "bytes"
+    },
+    {
+      "id": "cpu",
+      "title": "CPU Time",
+      "type": "timeseries",
+      "metrics": [
+        "process_cpu_user_seconds_total",
+        "process_cpu_system_seconds_total"
+      ],
+      "unit": "s"
+    }
+  ],
+  "tags": [
+    "xclsv",
+    "observability",
+    "system-health"
+  ]
+}

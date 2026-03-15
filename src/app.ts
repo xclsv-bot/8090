@@ -5,9 +5,12 @@ import rateLimit from '@fastify/rate-limit';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { env } from './config/env.js';
-import { logger } from './utils/logger.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { registerTracingHooks } from './middleware/tracing.js';
 import { registerRoutes } from './routes/index.js';
+import { loggingService } from './services/loggingService.js';
+import { metricsService } from './services/metricsService.js';
+import { alertService } from './services/alertService.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -85,29 +88,12 @@ export async function buildApp(): Promise<FastifyInstance> {
     },
   });
 
-  // Request logging
-  app.addHook('onRequest', async (request) => {
-    logger.info(
-      {
-        method: request.method,
-        url: request.url,
-        requestId: request.id,
-      },
-      'Incoming request'
-    );
-  });
+  registerTracingHooks(app);
+  loggingService.registerRequestLogging(app);
 
-  app.addHook('onResponse', async (request, reply) => {
-    logger.info(
-      {
-        method: request.method,
-        url: request.url,
-        statusCode: reply.statusCode,
-        responseTime: reply.elapsedTime,
-        requestId: request.id,
-      },
-      'Request completed'
-    );
+  app.addHook('onResponse', async () => {
+    const snapshot = metricsService.getSnapshot();
+    alertService.evaluate(snapshot);
   });
 
   // Register routes

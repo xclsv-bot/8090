@@ -2,6 +2,8 @@ import { type FastifyInstance, type FastifyReply } from 'fastify';
 import { Socket } from 'node:net';
 import { env } from '../config/env.js';
 import { checkDatabaseHealth, getPoolStats } from '../db/connection-pool.js';
+import { metricsService } from '../services/metricsService.js';
+import { alertService } from '../services/alertService.js';
 
 const VERSION = process.env.npm_package_version || '1.0.0';
 const HEALTH_TIMEOUT_MS = 2_000;
@@ -150,6 +152,26 @@ function sendUnavailable(reply: FastifyReply, message: string, details?: Record<
 }
 
 export async function healthRoutes(fastify: FastifyInstance): Promise<void> {
+  const getSystemStats = () => {
+    const memory = process.memoryUsage();
+    const cpu = process.cpuUsage();
+
+    return {
+      memory: {
+        rssBytes: memory.rss,
+        heapTotalBytes: memory.heapTotal,
+        heapUsedBytes: memory.heapUsed,
+        externalBytes: memory.external,
+        arrayBuffersBytes: memory.arrayBuffers,
+      },
+      cpu: {
+        userMicroseconds: cpu.user,
+        systemMicroseconds: cpu.system,
+      },
+      uptimeSeconds: process.uptime(),
+    };
+  };
+
   fastify.get('/health', async (_request, reply) => {
     const [database, redis] = await Promise.all([checkDatabase(), checkRedis()]);
 
@@ -171,6 +193,7 @@ export async function healthRoutes(fastify: FastifyInstance): Promise<void> {
           database,
           redis,
         },
+        system: getSystemStats(),
         databasePool: {
           max: poolStats.max,
           total: poolStats.totalCount,
@@ -180,6 +203,25 @@ export async function healthRoutes(fastify: FastifyInstance): Promise<void> {
           totalConnectionsRemoved: poolStats.totalConnectionsRemoved,
           totalPoolErrors: poolStats.totalPoolErrors,
         },
+      },
+    };
+  });
+
+  fastify.get('/health/metrics', async (request, reply) => {
+    const acceptHeader = request.headers.accept;
+    const wantsPrometheus = typeof acceptHeader === 'string' && acceptHeader.includes('text/plain');
+
+    if (wantsPrometheus) {
+      reply.header('content-type', 'text/plain; version=0.0.4; charset=utf-8');
+      return reply.send(metricsService.toPrometheusFormat());
+    }
+
+    return {
+      success: true,
+      data: {
+        metrics: metricsService.getSnapshot(),
+        activeAlerts: alertService.getActiveAlerts(),
+        alertHistory: alertService.getHistory(25),
       },
     };
   });

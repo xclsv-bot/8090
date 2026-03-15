@@ -31,13 +31,14 @@ const SCHEMA_ORDER = [
   'support_hub_realtime_schema.sql',
 ] as const;
 
-const WO133_MIGRATIONS = [
+const ORDERED_MIGRATIONS = [
   '001_update_event_table.sql',
   '002_create_event_assignment_table.sql',
   '003_update_ambassador_table.sql',
   '004_update_signup_table.sql',
   '005_create_payroll_tables.sql',
   '006_create_availability_tables.sql',
+  '126_backup_metadata.sql',
   '124_secrets_audit_log.sql',
 ] as const;
 
@@ -97,8 +98,8 @@ export async function migrate(direction: MigrationDirection = 'up'): Promise<voi
         }
       }
 
-      console.log('\n📦 Running WO-133 migrations...');
-      for (const migrationFile of WO133_MIGRATIONS) {
+      console.log('\n📦 Running ordered migrations...');
+      for (const migrationFile of ORDERED_MIGRATIONS) {
         const migrationPath = join(__dirname, 'migrations', migrationFile);
         const migration = readFileSync(migrationPath, 'utf-8');
         const { up } = parseMigrationSections(migration);
@@ -107,9 +108,9 @@ export async function migrate(direction: MigrationDirection = 'up'): Promise<voi
         await runSql(pool, `${migrationFile} [UP]`, up);
       }
     } else {
-      console.log('↩️  Rolling back WO-133 migrations...');
+      console.log('↩️  Rolling back ordered migrations...');
 
-      for (const migrationFile of [...WO133_MIGRATIONS].reverse()) {
+      for (const migrationFile of [...ORDERED_MIGRATIONS].reverse()) {
         const migrationPath = join(__dirname, 'migrations', migrationFile);
         const migration = readFileSync(migrationPath, 'utf-8');
         const { down } = parseMigrationSections(migration);

@@ -2,6 +2,8 @@ import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 import { pool } from '../config/database.js';
 import { checkDatabaseHealth, queryWithRetry } from '../db/connection-pool.js';
 import { logger } from '../utils/logger.js';
+import { metricsService } from './metricsService.js';
+import { withSpan } from '../middleware/tracing.js';
 
 /**
  * Database service providing query methods with logging and error handling
@@ -22,8 +24,18 @@ export class DatabaseService {
   ): Promise<QueryResult<T>> {
     const start = Date.now();
     try {
-      const result = await queryWithRetry<T>(text, params);
+      const result = await withSpan(
+        'db.query',
+        () => queryWithRetry<T>(text, params),
+        { operation: this.extractOperation(text) }
+      );
       const duration = Date.now() - start;
+
+      metricsService.recordDatabaseQuery({
+        operation: this.extractOperation(text),
+        durationMs: duration,
+        success: true,
+      });
       
       logger.debug(
         { query: text, duration, rows: result.rowCount },
@@ -32,9 +44,20 @@ export class DatabaseService {
       
       return result;
     } catch (error) {
+      const duration = Date.now() - start;
+      metricsService.recordDatabaseQuery({
+        operation: this.extractOperation(text),
+        durationMs: duration,
+        success: false,
+      });
       logger.error({ error, query: text }, 'Database query failed');
       throw error;
     }
+  }
+
+  private extractOperation(queryText: string): string {
+    const operation = queryText.trim().split(/\s+/)[0];
+    return operation ? operation.toUpperCase() : 'UNKNOWN';
   }
 
   /**

@@ -1,7 +1,7 @@
 import { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
-import { logger } from '../utils/logger.js';
 import { env } from '../config/env.js';
+import { loggingService } from '../services/loggingService.js';
 
 export interface AppError extends Error {
   statusCode?: number;
@@ -17,22 +17,7 @@ export function errorHandler(
   request: FastifyRequest,
   reply: FastifyReply
 ): void {
-  // Log the error
-  logger.error(
-    {
-      error: {
-        message: error.message,
-        stack: error.stack,
-        code: 'code' in error ? error.code : undefined,
-      },
-      request: {
-        method: request.method,
-        url: request.url,
-        userId: request.user?.id,
-      },
-    },
-    'Request error'
-  );
+  loggingService.logRequestError(request, error);
 
   // Handle Zod validation errors
   if (error instanceof ZodError) {
