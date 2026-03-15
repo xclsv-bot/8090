@@ -19,6 +19,7 @@ export { AmbassadorAssignmentSection } from './AmbassadorAssignmentSection';
 
 // Smart Event Creation (WO-94)
 export { SmartEventCreateModal } from './SmartEventCreateModal';
+export { EventEditModal } from './EventEditModal';
 
 // Historical Import
 export { HistoricalImportSection } from './HistoricalImportSection';

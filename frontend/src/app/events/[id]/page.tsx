@@ -15,8 +15,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowLeft, Calendar, MapPin, Users, Copy, CalendarRange, Trash2 } from 'lucide-react';
-import { EventDuplicateModal, BulkDuplicateModal, EventBudgetSection, AmbassadorAssignmentSection } from '@/components/events';
+import { ArrowLeft, Calendar, MapPin, Users, Copy, CalendarRange, Trash2, Pencil } from 'lucide-react';
+import {
+  EventDuplicateModal,
+  BulkDuplicateModal,
+  EventBudgetSection,
+  AmbassadorAssignmentSection,
+  EventEditModal,
+} from '@/components/events';
 
 const statusColors: Record<string, string> = {
   planned: 'bg-gray-100 text-gray-700',
@@ -36,6 +42,7 @@ export default function EventDetailPage() {
   // Duplicate modal state
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [showBulkDuplicateModal, setShowBulkDuplicateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   async function handleDelete() {
@@ -246,7 +253,10 @@ export default function EventDetailPage() {
           <Card className="p-6">
             <h3 className="font-semibold mb-4">Actions</h3>
             <div className="space-y-2">
-              <Button className="w-full" variant="outline">Edit Event</Button>
+              <Button className="w-full" variant="outline" onClick={() => setShowEditModal(true)}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit Event
+              </Button>
               <Button className="w-full" variant="outline">Export Sign-ups</Button>
               <div className="border-t pt-2 mt-2">
                 <p className="text-xs text-gray-500 mb-2">Duplication</p>
@@ -308,6 +318,16 @@ export default function EventDetailPage() {
           }}
         />
       )}
+
+      {/* Event Edit Modal */}
+      <EventEditModal
+        open={showEditModal}
+        onOpenChange={setShowEditModal}
+        event={event}
+        onSaved={() => {
+          void loadData();
+        }}
+      />
     </div>
   );
 }
