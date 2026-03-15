@@ -35,7 +35,7 @@
       ]
     },
     {
-      "source": "/(.*)\\.(?:js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|webp)$",
+      "source": "/assets/:path*",
       "headers": [
         {
           "key": "Cache-Control",
@@ -53,7 +53,7 @@
       ]
     },
     {
-      "source": "/((?!_next/static|_next/image|api|.*\\..*).*)",
+      "source": "/:path*",
       "headers": [
         {
           "key": "Cache-Control",
